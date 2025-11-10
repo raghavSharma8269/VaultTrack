@@ -4,13 +4,16 @@ import com.example.VaultTrackBackend.dto.transaction.CreateTransactionDTO;
 import com.example.VaultTrackBackend.model.entity.Account;
 import com.example.VaultTrackBackend.model.entity.Transaction;
 import com.example.VaultTrackBackend.model.entity.User;
+import com.example.VaultTrackBackend.model.enums.TransactionType;
 import com.example.VaultTrackBackend.repository.AccountRepository;
 import com.example.VaultTrackBackend.repository.TransactionRepository;
 import com.example.VaultTrackBackend.service.auth.GetCurrentUserService;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
 @Service
+@Slf4j
 public class CreateTransactionService {
     private final GetCurrentUserService getCurrentUserService;
     private final TransactionRepository transactionRepository;
@@ -28,8 +31,9 @@ public class CreateTransactionService {
     }
 
     public ResponseEntity<String> execute(CreateTransactionDTO createTransactionDTO) {
-        User user = getCurrentUserService.execute();
 
+        log.info("Creating transaction for account ID: {}", createTransactionDTO.getAccountId());
+        User user = getCurrentUserService.execute();
         Account account = accountRepository.findById(createTransactionDTO.getAccountId()).orElse(null);
 
         if (account == null || !account.getUser().getUserId().equals(user.getUserId())) {
@@ -48,10 +52,17 @@ public class CreateTransactionService {
 
         transactionRepository.save(transaction);
 
-        account.setCurrentBalance(account.getCurrentBalance().add(createTransactionDTO.getAmount()));
+        if (transaction.getTransactionType().equals(TransactionType.INCOME)){
+            account.setCurrentBalance(account.getCurrentBalance().add(createTransactionDTO.getAmount()));
+            log.info("Added {}", createTransactionDTO.getAmount());
+        }
+        else if (transaction.getTransactionType().equals(TransactionType.EXPENSE)){
+            account.setCurrentBalance(account.getCurrentBalance().subtract(createTransactionDTO.getAmount()));
+            log.info("Removed {}", createTransactionDTO.getAmount());
+        }
 
+        accountRepository.save(account);
 
-
-        return ResponseEntity.ok("Transaction Created");
+        return ResponseEntity.ok("Transaction Successful");
     }
 }
