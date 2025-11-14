@@ -16,6 +16,8 @@ public class CreateTransactionDTO {
     @NotNull(message = "Amount is required")
     private BigDecimal amount;
 
+    private String transactionName;
+
     @NotNull(message = "Transaction category is required")
     private TransactionCategory transactionCategory;
 
