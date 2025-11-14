@@ -41,6 +41,7 @@ public class CreateTransactionService {
         }
 
         Transaction transaction = Transaction.builder()
+                .transactionName(createTransactionDTO.getTransactionName())
                 .amount(createTransactionDTO.getAmount())
                 .transactionCategory(createTransactionDTO.getTransactionCategory())
                 .transactionType(createTransactionDTO.getTransactionType())
