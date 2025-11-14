@@ -30,6 +30,9 @@ public class Transaction {
     @Column(name = "transaction_id", updatable = false, nullable = false)
     private UUID transactionId;
 
+    @Column(name = "transaction_name", nullable = true)
+    private String transactionName;
+
     @Column(name = "amount", nullable = false)
     private BigDecimal amount;
 
