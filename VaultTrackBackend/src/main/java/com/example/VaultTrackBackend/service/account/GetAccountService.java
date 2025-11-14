@@ -2,6 +2,7 @@ package com.example.VaultTrackBackend.service.account;
 
 import com.example.VaultTrackBackend.dto.account.GetAccountResponseDTO;
 import com.example.VaultTrackBackend.model.entity.Account;
+import com.example.VaultTrackBackend.model.entity.User;
 import com.example.VaultTrackBackend.model.enums.AccountType;
 import com.example.VaultTrackBackend.repository.AccountRepository;
 import com.example.VaultTrackBackend.service.auth.GetCurrentUserService;
@@ -24,7 +25,7 @@ public class GetAccountService {
     }
 
     public ResponseEntity<List<GetAccountResponseDTO>> getAccounts(String query, AccountType accountType) {
-        var currentUser = getCurrentUserService.execute();
+        User currentUser = getCurrentUserService.execute();
         List<Account> accounts;
 
         accounts = accountRepository.findAccountsByFilters(
