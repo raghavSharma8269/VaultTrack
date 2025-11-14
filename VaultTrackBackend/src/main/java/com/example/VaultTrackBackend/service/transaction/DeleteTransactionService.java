@@ -15,13 +15,13 @@ import java.util.UUID;
 
 @Service
 @Slf4j
-public class DeleteTransaction {
+public class DeleteTransactionService {
 
     private final TransactionRepository transactionRepository;
     private final AccountRepository accountRepository;
     private final GetCurrentUserService getCurrentUserService;
 
-    public DeleteTransaction(
+    public DeleteTransactionService(
             TransactionRepository transactionRepository,
             AccountRepository accountRepository,
             GetCurrentUserService getCurrentUserService
