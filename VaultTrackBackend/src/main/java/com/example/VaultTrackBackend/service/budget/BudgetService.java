@@ -39,9 +39,16 @@ public class BudgetService {
         return budgetRepo.save(b);
     }
 
+    public void validateOwnership(UUID budgetId, UUID userId){
+        boolean exists = budgetRepo.existsByIdAndUserId(budgetId, userId);
+    }
+
     @Transactional
     public Transaction addTransaction(UUID userId, TransactionDTO dto){
         //optionally verify budget ownership
+        validateOwnership(dto.getBudgetId(), userId);
+
+        //Transaction
         Transaction tx = Transaction.builder()
                 .budgetId(dto.getBudgetId())
                 .categoryId(dto.getCategoryId())

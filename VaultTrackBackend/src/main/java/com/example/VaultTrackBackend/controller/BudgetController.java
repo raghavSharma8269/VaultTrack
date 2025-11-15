@@ -39,7 +39,7 @@ public class BudgetController {
 
     @PostMapping("/{id}/transactions")
     public ResponseEntity<TransactionDTO> addTransaction(@PathVariable UUID id, @RequestBody TransactionDTO dto, Principal p){
-        UUID userId = ... //validate user owns budget id
+        UUID userId = UUID.fromString(p.getName()); //validate user owns budget id
         dto.setBudgetId(id);
         Transaction tx = budgetService.addTransaction(userId, dto);
         TransactionDTO out = ... //map fields
