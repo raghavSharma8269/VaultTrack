@@ -7,12 +7,13 @@ import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.UUID;
 
 @Data @Builder @NoArgsConstructor @AllArgsConstructor
 public class TransactionDTO {
-    private Long id;
-    private Long budgetid;
-    private Long categoryid;
+    private UUID id;
+    private UUID budgetId;
+    private UUID categoryId;
     private BigDecimal amount;
     private String type; //for "income" or "expense"
     private LocalDate date;

@@ -51,13 +51,29 @@ public class Budget {
 
     @Column(name = "is_active")
     private Boolean isActive = true;
-
-    @CreationTimestamp
-    @Column(name = "created_at", updatable = false)
-    private LocalDateTime createdAt;
+//testing offsetdatetime in its place (see below)
+//    @CreationTimestamp
+//    @Column(name = "created_at", updatable = false)
+//    private LocalDateTime createdAt;
 
     @UpdateTimestamp
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
+
+
+    private UUID userId;
+    private String name;
+    private String currency;
+    private LocalDate startDate;
+    private LocalDate endDate;
+
+    @Column(precision = 19, scale = 4)
+    private BigDecimal plannedAmount;
+
+    // already another instance in program (Line 57)
+    private java.time.OffsetDateTime createdAt;
+
+    @Version
+    private Integer version;
 }
 

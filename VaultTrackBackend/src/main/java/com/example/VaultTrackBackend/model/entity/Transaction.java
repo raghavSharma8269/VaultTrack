@@ -47,10 +47,10 @@ public class Transaction {
 
     @Column(name = "recurring_date")
     private LocalDate recurringDate;
-
-    @CreationTimestamp
-    @Column(name = "created_at", nullable = false, updatable = false)
-    private LocalDateTime createdAt;
+//turned off to test offsetdatetime (see below)
+//    @CreationTimestamp
+//    @Column(name = "created_at", nullable = false, updatable = false)
+//    private LocalDateTime createdAt;
 
     @ManyToOne
     @JoinColumn(name = "user_id", nullable = false)
@@ -59,5 +59,21 @@ public class Transaction {
     @ManyToOne
     @JoinColumn(name = "account_id", nullable = false)
     private Account account;
+
+    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private UUID id;
+
+    private UUID budgetId;
+    private UUID categoryId;
+    //already on line 34
+    //@Column(precision = 19, scale = 4)
+    //private BigDecimal amount; //positive number
+
+    @Enumerated(EnumType.STRING)
+    private TransactionType type; //income or Expense
+
+    private LocalDate date;
+    private String note;
+    private java.time.OffsetDateTime createdAt;
 
 }

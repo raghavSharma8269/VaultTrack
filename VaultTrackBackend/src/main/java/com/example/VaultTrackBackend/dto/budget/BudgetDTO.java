@@ -7,12 +7,13 @@ import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.UUID;
 
 @Data @Builder @NoArgsConstructor @AllArgsConstructor
 public class BudgetDTO {
-    private Long id;
+    private UUID id;
     private String name;
-    private String Currency;
+    private String currency;
     private LocalDate startDate;
     private LocalDate endDate;
     private BigDecimal plannedAmount;
