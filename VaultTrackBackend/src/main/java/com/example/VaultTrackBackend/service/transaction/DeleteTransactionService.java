@@ -60,6 +60,8 @@ public class DeleteTransactionService {
             log.info("Added {}", transaction.getAmount());
         }
 
+        accountRepository.save(account);
+
         transactionRepository.delete(transaction);
         log.info("Transaction with ID: {} deleted successfully", transactionId);
         return ResponseEntity.ok("Transaction deleted successfully");
