@@ -1,10 +1,12 @@
 package com.example.VaultTrackBackend.controller;
 
 import com.example.VaultTrackBackend.dto.charts.BarChartDataResponseDTO;
+import com.example.VaultTrackBackend.dto.charts.LineChartDataResponseDTO;
 import com.example.VaultTrackBackend.dto.charts.PieChartDataResponseDTO;
 import com.example.VaultTrackBackend.model.enums.TransactionCategory;
 import com.example.VaultTrackBackend.model.enums.TransactionType;
 import com.example.VaultTrackBackend.service.charts.GetBarChartDataService;
+import com.example.VaultTrackBackend.service.charts.GetLineChartDataService;
 import com.example.VaultTrackBackend.service.charts.GetPieChartDataService;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
@@ -22,13 +24,16 @@ import java.util.UUID;
 public class ChartsController {
     private final GetPieChartDataService getPieChartDataService;
     private final GetBarChartDataService getBarChartDataService;
+    private final GetLineChartDataService getLineChartDataService;
 
     public ChartsController(
             GetPieChartDataService getPieChartDataService,
-            GetBarChartDataService getBarChartDataService
+            GetBarChartDataService getBarChartDataService,
+            GetLineChartDataService getLineChartDataService
     ) {
         this.getPieChartDataService = getPieChartDataService;
         this.getBarChartDataService = getBarChartDataService;
+        this.getLineChartDataService = getLineChartDataService;
     }
 
     @GetMapping("/pie-chart")
@@ -67,5 +72,14 @@ public class ChartsController {
                 transactionName,
                 accountId
         );
+    }
+
+    @GetMapping("/line-chart")
+    public ResponseEntity<List<LineChartDataResponseDTO>> getLineChartData(
+            @RequestParam UUID accountId,
+            @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss.SSSSSS") LocalDateTime start,
+            @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss.SSSSSS") LocalDateTime end
+    ) {
+        return getLineChartDataService.execute(accountId, start, end);
     }
 }
