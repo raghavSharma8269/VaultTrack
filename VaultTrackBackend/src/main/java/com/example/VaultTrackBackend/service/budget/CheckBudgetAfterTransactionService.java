@@ -3,6 +3,7 @@ package com.example.VaultTrackBackend.service.budget;
 import com.example.VaultTrackBackend.model.entity.Budget;
 import com.example.VaultTrackBackend.model.entity.Transaction;
 import com.example.VaultTrackBackend.repository.BudgetRepository;
+import com.example.VaultTrackBackend.service.email.EmailServiceImplementation;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
@@ -13,11 +14,14 @@ import java.math.BigDecimal;
 public class CheckBudgetAfterTransactionService {
 
     private final BudgetRepository budgetRepository;
+    private final EmailServiceImplementation emailService;
 
     public CheckBudgetAfterTransactionService(
-            BudgetRepository budgetRepository
+            BudgetRepository budgetRepository,
+            EmailServiceImplementation emailService
     ) {
         this.budgetRepository = budgetRepository;
+        this.emailService = emailService;
     }
 
     public void execute(
@@ -36,12 +40,18 @@ public class CheckBudgetAfterTransactionService {
         if (budget.getIsActive()){
             if (budget.getCurrentSpent().compareTo(budget.getBudgetAmount()) >= 0){
                 log.info("Budget limit exceeded for budget id: {}", budget.getBudgetId());
-                // email notification logic can be added here
-            }
+                emailService.sendSimpleMessage(
+                        budget.getAccount().getUser().getEmail(),
+                        "Budget Limit Exceeded",
+                        "You have exceeded your budget limit for your account named: " + budget.getAccount().getAccountName()
+                );            }
             else if (budget.getCurrentSpent().compareTo(thresholdAmount) >= 0){
                 log.info("Budget alert threshold reached for budget id: {}", budget.getBudgetId());
-                // email notification logic can be added here
-            }
+                emailService.sendSimpleMessage(
+                        budget.getAccount().getUser().getEmail(),
+                        "Budget Alert",
+                        "You have reached your budget alert threshold of " + budget.getAlertThreshold() + "% for your account named: " + budget.getAccount().getAccountName()
+                );            }
         }
     }
 }
