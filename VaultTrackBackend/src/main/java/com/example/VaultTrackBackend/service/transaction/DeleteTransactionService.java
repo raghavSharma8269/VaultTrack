@@ -1,10 +1,12 @@
 package com.example.VaultTrackBackend.service.transaction;
 
 import com.example.VaultTrackBackend.model.entity.Account;
+import com.example.VaultTrackBackend.model.entity.Budget;
 import com.example.VaultTrackBackend.model.entity.Transaction;
 import com.example.VaultTrackBackend.model.entity.User;
 import com.example.VaultTrackBackend.model.enums.TransactionType;
 import com.example.VaultTrackBackend.repository.AccountRepository;
+import com.example.VaultTrackBackend.repository.BudgetRepository;
 import com.example.VaultTrackBackend.repository.TransactionRepository;
 import com.example.VaultTrackBackend.service.auth.GetCurrentUserService;
 import lombok.extern.slf4j.Slf4j;
@@ -20,15 +22,18 @@ public class DeleteTransactionService {
     private final TransactionRepository transactionRepository;
     private final AccountRepository accountRepository;
     private final GetCurrentUserService getCurrentUserService;
+    private final BudgetRepository budgetRepository;
 
     public DeleteTransactionService(
             TransactionRepository transactionRepository,
             AccountRepository accountRepository,
-            GetCurrentUserService getCurrentUserService
+            GetCurrentUserService getCurrentUserService,
+            BudgetRepository budgetRepository
     ) {
         this.transactionRepository = transactionRepository;
         this.accountRepository = accountRepository;
         this.getCurrentUserService = getCurrentUserService;
+        this.budgetRepository = budgetRepository;
     }
 
     public ResponseEntity<String> deleteTransaction(UUID transactionId) {
@@ -58,11 +63,18 @@ public class DeleteTransactionService {
         else if (transaction.getTransactionType().equals(TransactionType.EXPENSE)){
             account.setCurrentBalance(account.getCurrentBalance().add(transaction.getAmount()));
             log.info("Added {}", transaction.getAmount());
+
+            // Update budget if exists
+            Budget budget = account.getBudget();
+            if (budget != null) {
+                budget.setCurrentSpent(budget.getCurrentSpent().subtract(transaction.getAmount()));
+                budgetRepository.save(budget);
+            }
         }
 
         accountRepository.save(account);
-
         transactionRepository.delete(transaction);
+
         log.info("Transaction with ID: {} deleted successfully", transactionId);
         return ResponseEntity.ok("Transaction deleted successfully");
     }

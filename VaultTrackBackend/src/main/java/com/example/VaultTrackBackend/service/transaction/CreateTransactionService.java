@@ -8,6 +8,7 @@ import com.example.VaultTrackBackend.model.enums.TransactionType;
 import com.example.VaultTrackBackend.repository.AccountRepository;
 import com.example.VaultTrackBackend.repository.TransactionRepository;
 import com.example.VaultTrackBackend.service.auth.GetCurrentUserService;
+import com.example.VaultTrackBackend.service.budget.CheckBudgetService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
@@ -18,16 +19,18 @@ public class CreateTransactionService {
     private final GetCurrentUserService getCurrentUserService;
     private final TransactionRepository transactionRepository;
     private final AccountRepository accountRepository;
+    private final CheckBudgetService checkBudgetService;  // Add this
 
     public CreateTransactionService(
             GetCurrentUserService getCurrentUserService,
             TransactionRepository transactionRepository,
-            AccountRepository accountRepository
-    )
-    {
+            AccountRepository accountRepository,
+            CheckBudgetService checkBudgetService  // Add this
+    ) {
         this.getCurrentUserService = getCurrentUserService;
         this.transactionRepository = transactionRepository;
         this.accountRepository = accountRepository;
+        this.checkBudgetService = checkBudgetService;  // Add this
     }
 
     public ResponseEntity<String> execute(CreateTransactionDTO createTransactionDTO) {
@@ -60,6 +63,10 @@ public class CreateTransactionService {
         else if (transaction.getTransactionType().equals(TransactionType.EXPENSE)){
             account.setCurrentBalance(account.getCurrentBalance().subtract(createTransactionDTO.getAmount()));
             log.info("Removed {}", createTransactionDTO.getAmount());
+
+            if (account.getBudget() != null) {
+                checkBudgetService.execute(transaction, account.getBudget());
+            }
         }
 
         accountRepository.save(account);
