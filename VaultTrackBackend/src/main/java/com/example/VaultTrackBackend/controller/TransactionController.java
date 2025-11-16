@@ -52,6 +52,7 @@ public class TransactionController {
             @RequestParam(required = false) String transactionName,
             @RequestParam(required = false) TransactionType transactionType,
             @RequestParam(required = false) TransactionCategory transactionCategory,
+            @RequestParam(required = false) UUID accountId,
             @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss.SSSSSS") LocalDateTime start,
             @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss.SSSSSS") LocalDateTime end
     ){
@@ -60,7 +61,8 @@ public class TransactionController {
                 end,
                 transactionCategory,
                 transactionType,
-                transactionName
+                transactionName,
+                accountId
         );
     }
 

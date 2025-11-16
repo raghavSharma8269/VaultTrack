@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 
 @Service
 public class GetTransactionService {
@@ -31,7 +32,8 @@ public class GetTransactionService {
             LocalDateTime end,
             TransactionCategory transactionCategory,
             TransactionType transactionType,
-            String transactionName
+            String transactionName,
+            UUID accountId
     ) {
         User currentUser = getCurrentUserService.execute();
         List<Transaction> transactions;
@@ -42,6 +44,7 @@ public class GetTransactionService {
                     transactionName,
                     transactionType,
                     transactionCategory,
+                    accountId,
                     start,
                     end
             );
@@ -50,7 +53,8 @@ public class GetTransactionService {
                     currentUser.getUserId(),
                     transactionName,
                     transactionType,
-                    transactionCategory
+                    transactionCategory,
+                    accountId
             );
         }
 

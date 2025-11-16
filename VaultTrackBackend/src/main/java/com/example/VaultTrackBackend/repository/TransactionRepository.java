@@ -18,12 +18,14 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID> 
             "AND (:transactionName = '' OR :transactionName IS NULL OR LOWER(t.transactionName) LIKE LOWER(CONCAT('%', :transactionName, '%'))) " +
             "AND (:transactionType IS NULL OR t.transactionType = :transactionType) " +
             "AND (:transactionCategory IS NULL OR t.transactionCategory = :transactionCategory) " +
+            "AND (:accountId IS NULL OR t.account.accountId = :accountId) " +
             "ORDER BY t.createdAt DESC")
     List<Transaction> findTransactionsByFiltersNoDate(
             @Param("userId") UUID userId,
             @Param("transactionName") String transactionName,
             @Param("transactionType") TransactionType transactionType,
-            @Param("transactionCategory") TransactionCategory transactionCategory
+            @Param("transactionCategory") TransactionCategory transactionCategory,
+            @Param("accountId") UUID accountId
     );
 
     // With date filters (both required)
@@ -31,6 +33,7 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID> 
             "AND (:transactionName = '' OR :transactionName IS NULL OR LOWER(t.transactionName) LIKE LOWER(CONCAT('%', :transactionName, '%'))) " +
             "AND (:transactionType IS NULL OR t.transactionType = :transactionType) " +
             "AND (:transactionCategory IS NULL OR t.transactionCategory = :transactionCategory) " +
+            "AND (:accountId IS NULL OR t.account.accountId = :accountId) " +
             "AND t.createdAt >= :start AND t.createdAt <= :end " +
             "ORDER BY t.createdAt DESC")
     List<Transaction> findTransactionsByFiltersWithDate(
@@ -38,6 +41,7 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID> 
             @Param("transactionName") String transactionName,
             @Param("transactionType") TransactionType transactionType,
             @Param("transactionCategory") TransactionCategory transactionCategory,
+            @Param("accountId") UUID accountId,
             @Param("start") LocalDateTime start,
             @Param("end") LocalDateTime end
     );
