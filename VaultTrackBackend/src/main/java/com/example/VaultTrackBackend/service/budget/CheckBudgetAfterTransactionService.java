@@ -10,11 +10,11 @@ import java.math.BigDecimal;
 
 @Service
 @Slf4j
-public class CheckBudgetService {
+public class CheckBudgetAfterTransactionService {
 
     private final BudgetRepository budgetRepository;
 
-    public CheckBudgetService(
+    public CheckBudgetAfterTransactionService(
             BudgetRepository budgetRepository
     ) {
         this.budgetRepository = budgetRepository;

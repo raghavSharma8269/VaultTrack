@@ -8,7 +8,7 @@ import com.example.VaultTrackBackend.model.enums.TransactionType;
 import com.example.VaultTrackBackend.repository.AccountRepository;
 import com.example.VaultTrackBackend.repository.TransactionRepository;
 import com.example.VaultTrackBackend.service.auth.GetCurrentUserService;
-import com.example.VaultTrackBackend.service.budget.CheckBudgetService;
+import com.example.VaultTrackBackend.service.budget.CheckBudgetAfterTransactionService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
@@ -19,18 +19,18 @@ public class CreateTransactionService {
     private final GetCurrentUserService getCurrentUserService;
     private final TransactionRepository transactionRepository;
     private final AccountRepository accountRepository;
-    private final CheckBudgetService checkBudgetService;  // Add this
+    private final CheckBudgetAfterTransactionService checkBudgetAfterTransactionService;  // Add this
 
     public CreateTransactionService(
             GetCurrentUserService getCurrentUserService,
             TransactionRepository transactionRepository,
             AccountRepository accountRepository,
-            CheckBudgetService checkBudgetService  // Add this
+            CheckBudgetAfterTransactionService checkBudgetAfterTransactionService  // Add this
     ) {
         this.getCurrentUserService = getCurrentUserService;
         this.transactionRepository = transactionRepository;
         this.accountRepository = accountRepository;
-        this.checkBudgetService = checkBudgetService;  // Add this
+        this.checkBudgetAfterTransactionService = checkBudgetAfterTransactionService;  // Add this
     }
 
     public ResponseEntity<String> execute(CreateTransactionDTO createTransactionDTO) {
@@ -65,7 +65,7 @@ public class CreateTransactionService {
             log.info("Removed {}", createTransactionDTO.getAmount());
 
             if (account.getBudget() != null) {
-                checkBudgetService.execute(transaction, account.getBudget());
+                checkBudgetAfterTransactionService.execute(transaction, account.getBudget());
             }
         }
 
