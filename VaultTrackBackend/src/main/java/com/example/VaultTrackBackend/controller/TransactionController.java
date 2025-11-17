@@ -93,8 +93,10 @@ public class TransactionController {
         assert transactions != null;
         byte[] csvBytes = transactionToCsvService.convertToCsv(transactions);
 
+        String filename = start.toLocalDate().toString() + " - " + end.toLocalDate().toString() + "-transactions.csv";
+
         return ResponseEntity.ok()
-                .header("Content-Disposition", "attachment; filename=transactions.csv")
+                .header("Content-Disposition", "attachment; filename=" + filename)
                 .contentType(MediaType.parseMediaType("text/csv"))
                 .body(csvBytes);
     }
