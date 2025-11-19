@@ -28,7 +28,7 @@ class AuthService {
    * @returns AuthResponse with token and user details
    */
   async signup(data: SignupData): Promise<AuthResponse> {
-    const response = await apiClient.post<AuthResponse>('/api/auth/register', data);
+    const response = await apiClient.post<AuthResponse>('/auth/register', data);
 
     if (response.data.token) {
       localStorage.setItem('authToken', response.data.token);
@@ -43,7 +43,7 @@ class AuthService {
    * @returns AuthResponse with token and user details
    */
   async login(data: LoginData): Promise<AuthResponse> {
-    const response = await apiClient.post<AuthResponse>('/api/auth/login', data);
+    const response = await apiClient.post<AuthResponse>('/auth/login', data);
 
     if (response.data.token) {
       localStorage.setItem('authToken', response.data.token);
