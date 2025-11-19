@@ -10,6 +10,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.GenericGenerator;
+import org.hibernate.annotations.UpdateTimestamp;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -17,20 +18,20 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
-@Table(name = "transactions")
+@Table(name = "recurring_transactions")
 @Data
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
-public class Transaction {
+public class RecurringTransaction {
 
     @Id
     @GeneratedValue(generator = "UUID")
     @GenericGenerator(name = "UUID", strategy = "org.hibernate.id.UUIDGenerator")
-    @Column(name = "transaction_id", updatable = false, nullable = false)
-    private UUID transactionId;
+    @Column(name = "recurring_transaction_id", updatable = false, nullable = false)
+    private UUID recurringTransactionId;
 
-    @Column(name = "transaction_name", nullable = true)
+    @Column(name = "transaction_name", nullable = false)
     private String transactionName;
 
     @Column(name = "amount", nullable = false)
@@ -44,16 +45,23 @@ public class Transaction {
     @Enumerated(EnumType.STRING)
     private TransactionType transactionType;
 
-    @Column(name = "recurrence_frequency")
+    @Column(name = "recurrence_frequency", nullable = false)
     @Enumerated(EnumType.STRING)
     private RecurringFrequency recurringFrequency;
 
-    @Column(name = "recurring_date")
-    private LocalDate recurringDate;
+    @Column(name = "next_execution_date", nullable = false)
+    private LocalDate nextExecutionDate;
+
+    @Column(name = "is_active")
+    private Boolean isActive = true;
 
     @CreationTimestamp
-    @Column(name = "created_at", nullable = false, updatable = false)
+    @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
+
+    @UpdateTimestamp
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
 
     @ManyToOne
     @JoinColumn(name = "user_id", nullable = false)
@@ -62,5 +70,4 @@ public class Transaction {
     @ManyToOne
     @JoinColumn(name = "account_id", nullable = false)
     private Account account;
-
 }

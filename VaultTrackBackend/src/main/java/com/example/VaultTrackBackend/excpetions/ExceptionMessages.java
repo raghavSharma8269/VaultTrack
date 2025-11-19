@@ -9,6 +9,7 @@ public enum ExceptionMessages {
     INVALID_CREDENTIALS("Invalid credentials"),
     ACCESS_DENIED("Access denied"),
     ITEM_NOT_FOUND("Item not found"),
+    ACCOUNT_NAME_ALREADY_EXISTS("Account name already exists"),
     GENERIC_ERROR("An unexpected error occurred");
 
     private final String message;
