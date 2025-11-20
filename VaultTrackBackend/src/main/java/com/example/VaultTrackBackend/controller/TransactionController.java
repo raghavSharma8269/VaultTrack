@@ -4,14 +4,12 @@ import com.example.VaultTrackBackend.dto.transaction.CreateTransactionDTO;
 import com.example.VaultTrackBackend.dto.transaction.GetTransactionResponseDTO;
 import com.example.VaultTrackBackend.model.enums.TransactionCategory;
 import com.example.VaultTrackBackend.model.enums.TransactionType;
-import com.example.VaultTrackBackend.service.transaction.CreateTransactionService;
-import com.example.VaultTrackBackend.service.transaction.DeleteTransactionService;
-import com.example.VaultTrackBackend.service.transaction.GetTransactionService;
-import com.example.VaultTrackBackend.service.transaction.TransactionToCsvService;
+import com.example.VaultTrackBackend.service.transaction.*;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -25,17 +23,20 @@ public class TransactionController {
     private final DeleteTransactionService deleteTransactionService;
     private final GetTransactionService getTransactionService;
     private final TransactionToCsvService transactionToCsvService;
+    private final ImportTransactionsFromCsvService importTransactionsFromCsvService;
 
     public TransactionController(
             CreateTransactionService createTransactionService,
             DeleteTransactionService deleteTransactionService,
             GetTransactionService getTransactionService,
-            TransactionToCsvService transactionToCsvService
+            TransactionToCsvService transactionToCsvService,
+            ImportTransactionsFromCsvService importTransactionsFromCsvService
     ) {
         this.createTransactionService = createTransactionService;
         this.deleteTransactionService = deleteTransactionService;
         this.getTransactionService = getTransactionService;
         this.transactionToCsvService = transactionToCsvService;
+        this.importTransactionsFromCsvService = importTransactionsFromCsvService;
     }
 
     @PostMapping
@@ -99,6 +100,14 @@ public class TransactionController {
                 .header("Content-Disposition", "attachment; filename=" + filename)
                 .contentType(MediaType.parseMediaType("text/csv"))
                 .body(csvBytes);
+    }
+
+    @PostMapping("/import/csv")
+    public ResponseEntity<String> importTransactionsFromCsv(
+            @RequestParam("file") MultipartFile file,
+            @RequestParam("accountId") UUID accountId
+    ) {
+        return importTransactionsFromCsvService.execute(file, accountId);
     }
 
 }
