@@ -64,9 +64,31 @@ public class AiFeedbackService {
             return ResponseEntity.ok("No transactions found for the given criteria.");
         }
 
-        String context = "Review these transactions and provide feedback and answer any other questions the user asks: \n";
+        String systemContext = """
+        You are a professional financial advisor with expertise in personal finance management.
+        Analyze the provided transactions carefully and provide:
+        1. Clear, actionable insights about spending patterns
+        2. Specific recommendations for improvement
+        3. Budget optimization suggestions
+        4. Answers to any user questions based on the transaction data
+        
+        Be concise, friendly, and practical in your advice.
+        """;
 
-        String fullPrompt = context + transactions.toString() + "\n User Question: " + aiFeedbackRequestDTO.getUserPrompt();
+        String transactionContext = """
+        Here are the user's transactions:
+        
+        %s
+        
+        """.formatted(transactions);
+
+        String userQuestion = """
+        User's Question: %s
+        
+        Please provide a detailed analysis and answer based on the transactions above.
+        """.formatted(aiFeedbackRequestDTO.getUserPrompt());
+
+        String fullPrompt = systemContext + transactionContext + userQuestion;
 
         String aiResponse = callOpenAiApi(fullPrompt);
 
