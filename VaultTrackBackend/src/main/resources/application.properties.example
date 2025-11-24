@@ -3,17 +3,17 @@ spring.application.name=VaultTrackBackend
 spring.config.import=optional:file:.env[.properties]
 
 # Postgres Configuration
-spring.datasource.url=jdbc:postgresql://localhost:5432/VaultTrackDB
-spring.datasource.username=postgres
-spring.datasource.password=6f241653
+spring.datasource.url=${SPRING_DATASOURCE_URL}
+spring.datasource.username=${SPRING_DATASOURCE_USERNAME}
+spring.datasource.password=${SPRING_DATASOURCE_PASSWORD}
 
 spring.datasource.driver-class-name=org.postgresql.Driver
 spring.jpa.hibernate.ddl-auto=update
 spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.PostgreSQLDialect
 
 # JWT Configuration
-jwt.secret=762cce42a6e8207c754103b43d51946ee00fec595168f812a4ae95a3efa2a2d5
-jwt.expiration=172800000
+jwt.secret=${JWT_SECRET}
+jwt.expiration=${JWT_EXPIRATION}
 
 # Logging Configuration
 logging.level.root=INFO
@@ -21,9 +21,9 @@ logging.level.com.example.VaultTrackBackend=DEBUG
 logging.level.org.springframework.web=DEBUG
 
 # Email Configuration
-spring.mail.host=smtp.gmail.com
-spring.mail.port=587
-spring.mail.username=raghavs2023@gmail.com
-spring.mail.password=ggnb nkju wndg hxjf
+spring.mail.host=${SPRING_MAIL_HOST}
+spring.mail.port=${SPRING_MAIL_PORT}
+spring.mail.username=${SPRING_MAIL_USERNAME}
+spring.mail.password=${SPRING_MAIL_PASSWORD}
 spring.mail.properties.mail.smtp.auth=true
 spring.mail.properties.mail.smtp.starttls.enable=true
