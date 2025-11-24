@@ -4,8 +4,6 @@ import com.example.VaultTrackBackend.dto.openai.AiFeedbackRequestDTO;
 import com.example.VaultTrackBackend.dto.transaction.GetTransactionResponseDTO;
 import com.example.VaultTrackBackend.model.enums.TransactionCategory;
 import com.example.VaultTrackBackend.model.enums.TransactionType;
-import com.example.VaultTrackBackend.repository.AccountRepository;
-import com.example.VaultTrackBackend.repository.TransactionRepository;
 import com.example.VaultTrackBackend.service.transaction.GetTransactionService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -22,8 +20,6 @@ import java.util.UUID;
 @Service
 @Slf4j
 public class AiFeedbackService {
-    private final AccountRepository accountRepository;
-    private final TransactionRepository transactionRepository;
     private final GetTransactionService getTransactionService;
     private final RestTemplate restTemplate;
 
@@ -31,13 +27,9 @@ public class AiFeedbackService {
     private String openaiApiKey;
 
     public AiFeedbackService(
-            AccountRepository accountRepository,
-            TransactionRepository transactionRepository,
             GetTransactionService getTransactionService,
             RestTemplate restTemplate
     ) {
-        this.accountRepository = accountRepository;
-        this.transactionRepository = transactionRepository;
         this.getTransactionService = getTransactionService;
         this.restTemplate = restTemplate;
     }
