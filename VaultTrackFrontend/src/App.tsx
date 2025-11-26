@@ -3,6 +3,7 @@ import Homepage from './pages/Homepage';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
 import AccountManagement from './pages/AccountManagement';
+import TransactionManagement from './pages/TransactionManagement';
 
 function App() {
   return (
@@ -12,6 +13,7 @@ function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
         <Route path="/accounts/manage" element={<AccountManagement />} />
+        <Route path="/transactions/manage" element={<TransactionManagement />} />
       </Routes>
     </Router>
   );

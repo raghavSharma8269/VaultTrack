@@ -90,11 +90,18 @@ function Homepage() {
         <div className="mb-8">
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-3xl font-bold text-gray-800">Account Overview</h2>
-            <Link to="/accounts/manage">
-              <button className="px-6 py-2 bg-blue-600 text-white rounded font-medium hover:bg-blue-700 transition-colors">
-                Manage Accounts
-              </button>
-            </Link>
+            <div className="flex gap-3">
+              <Link to="/transactions/manage">
+                <button className="px-6 py-2 bg-green-600 text-white rounded font-medium hover:bg-green-700 transition-colors">
+                  Manage Transactions
+                </button>
+              </Link>
+              <Link to="/accounts/manage">
+                <button className="px-6 py-2 bg-blue-600 text-white rounded font-medium hover:bg-blue-700 transition-colors">
+                  Manage Accounts
+                </button>
+              </Link>
+            </div>
           </div>
 
           {/* Total Balance Card */}
