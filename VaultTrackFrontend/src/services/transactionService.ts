@@ -1,7 +1,26 @@
 import apiClient from '../api/client';
-import type { CreateTransactionData } from '../types/transaction';
+import type { CreateTransactionData, Transaction } from '../types/transaction';
 
 class TransactionService {
+  /**
+   * Get all transactions for the authenticated user
+   * @returns List of transactions
+   */
+  async getTransactions(): Promise<Transaction[]> {
+    const response = await apiClient.get<Transaction[]>('/transactions');
+    return response.data;
+  }
+
+  /**
+   * Delete a transaction
+   * @param transactionId - ID of the transaction to delete
+   * @returns Success message
+   */
+  async deleteTransaction(transactionId: string): Promise<string> {
+    const response = await apiClient.delete<string>(`/transactions/${transactionId}`);
+    return response.data;
+  }
+
   /**
    * Add money to an account (create INCOME transaction)
    * @param data - Transaction data with INCOME type

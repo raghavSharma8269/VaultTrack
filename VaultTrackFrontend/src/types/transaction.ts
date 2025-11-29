@@ -27,11 +27,11 @@ export interface CreateTransactionData {
 
 export interface Transaction {
   transactionId: string;
-  transactionName?: string;
+  transactionName: string;
   amount: number;
   transactionCategory: TransactionCategory;
   transactionType: TransactionType;
   createdAt: string;
   accountId: string;
-  userId: string;
+  accountName: string;
 }

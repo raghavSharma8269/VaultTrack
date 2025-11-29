@@ -3,54 +3,148 @@ import { Link } from 'react-router-dom';
 import Header from '../components/Header';
 import accountService from '../services/accountService';
 import transactionService from '../services/transactionService';
+import recurringTransactionService from '../services/recurringTransactionService';
 import type { Account } from '../types/account';
 import { TransactionType, TransactionCategory } from '../types/transaction';
-import type { CreateTransactionData } from '../types/transaction';
+import type { CreateTransactionData, Transaction } from '../types/transaction';
+import type { RecurringTransaction, CreateRecurringTransactionData } from '../types/recurringTransaction';
+import { RecurringFrequency } from '../types/recurringTransaction';
+
+type UnifiedTransaction = {
+  id: string;
+  name: string;
+  amount: number;
+  category: TransactionCategory;
+  type: TransactionType;
+  accountId: string;
+  accountName: string;
+  createdAt: string;
+  isRecurring: boolean;
+  // Recurring-specific fields
+  frequency?: RecurringFrequency;
+  nextExecutionDate?: string;
+  isActive?: boolean;
+};
 
 function TransactionManagement() {
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [recurringTransactions, setRecurringTransactions] = useState<RecurringTransaction[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>('');
   const [successMessage, setSuccessMessage] = useState<string>('');
 
+  // Filter states
+  const [filterType, setFilterType] = useState<'all' | 'one-time' | 'recurring'>('all');
+
   // Modal states
   const [showAddMoneyModal, setShowAddMoneyModal] = useState(false);
   const [showRemoveMoneyModal, setShowRemoveMoneyModal] = useState(false);
-  const [showUploadCSVModal, setShowUploadCSVModal] = useState(false);
+  const [showRecurringModal, setShowRecurringModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [selectedTransaction, setSelectedTransaction] = useState<UnifiedTransaction | null>(null);
 
-  // Form states
+  // Form states for regular transactions
   const [selectedAccountId, setSelectedAccountId] = useState<string>('');
   const [amount, setAmount] = useState<string>('');
   const [transactionName, setTransactionName] = useState<string>('');
   const [category, setCategory] = useState<TransactionCategory>(TransactionCategory.MISCELLANEOUS);
-  const [csvFile, setCsvFile] = useState<File | null>(null);
-  const [csvAccountId, setCsvAccountId] = useState<string>('');
+
+  // Form states for recurring transactions
+  const [recurringFormData, setRecurringFormData] = useState<CreateRecurringTransactionData>({
+    transactionName: '',
+    amount: 0,
+    transactionCategory: TransactionCategory.MISCELLANEOUS,
+    transactionType: TransactionType.EXPENSE,
+    recurringFrequency: RecurringFrequency.MONTHLY,
+    nextExecutionDate: new Date().toISOString().split('T')[0],
+    accountId: '',
+  });
 
   useEffect(() => {
-    fetchAccounts();
+    fetchData();
   }, []);
 
-  const fetchAccounts = async () => {
+  const fetchData = async () => {
     try {
       setLoading(true);
       setError('');
-      const data = await accountService.getAccounts();
-      setAccounts(data);
-      if (data.length > 0) {
-        setSelectedAccountId(data[0].accountId);
-        setCsvAccountId(data[0].accountId);
+      const [transactionsData, recurringData, accountsData] = await Promise.all([
+        transactionService.getTransactions(),
+        recurringTransactionService.getRecurringTransactions(),
+        accountService.getAccounts(),
+      ]);
+      setTransactions(transactionsData);
+      setRecurringTransactions(recurringData);
+      setAccounts(accountsData);
+      if (accountsData.length > 0 && !selectedAccountId) {
+        setSelectedAccountId(accountsData[0].accountId);
+        setRecurringFormData(prev => ({ ...prev, accountId: accountsData[0].accountId }));
       }
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to fetch accounts');
+      setError(err.response?.data?.message || 'Failed to fetch data');
     } finally {
       setLoading(false);
     }
+  };
+
+  const getUnifiedTransactions = (): UnifiedTransaction[] => {
+    const regularTx: UnifiedTransaction[] = transactions.map(tx => ({
+      id: tx.transactionId,
+      name: tx.transactionName || 'Transaction',
+      amount: tx.amount,
+      category: tx.transactionCategory,
+      type: tx.transactionType,
+      accountId: tx.accountId,
+      accountName: tx.accountName,
+      createdAt: tx.createdAt,
+      isRecurring: false,
+    }));
+
+    const recurringTx: UnifiedTransaction[] = recurringTransactions.map(rtx => ({
+      id: rtx.recurringTransactionId,
+      name: rtx.transactionName,
+      amount: rtx.amount,
+      category: rtx.transactionCategory,
+      type: rtx.transactionType,
+      accountId: rtx.accountId,
+      accountName: rtx.accountName,
+      createdAt: rtx.createdAt,
+      isRecurring: true,
+      frequency: rtx.recurringFrequency,
+      nextExecutionDate: rtx.nextExecutionDate,
+      isActive: rtx.isActive,
+    }));
+
+    let combined = [...regularTx, ...recurringTx];
+
+    // Apply filter
+    if (filterType === 'one-time') {
+      combined = combined.filter(tx => !tx.isRecurring);
+    } else if (filterType === 'recurring') {
+      combined = combined.filter(tx => tx.isRecurring);
+    }
+
+    // Sort by date, newest first
+    return combined.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   };
 
   const resetForm = () => {
     setAmount('');
     setTransactionName('');
     setCategory(TransactionCategory.MISCELLANEOUS);
+  };
+
+  const resetRecurringForm = () => {
+    setRecurringFormData({
+      transactionName: '',
+      amount: 0,
+      transactionCategory: TransactionCategory.MISCELLANEOUS,
+      transactionType: TransactionType.EXPENSE,
+      recurringFrequency: RecurringFrequency.MONTHLY,
+      nextExecutionDate: new Date().toISOString().split('T')[0],
+      accountId: accounts.length > 0 ? accounts[0].accountId : '',
+    });
   };
 
   const handleAddMoney = async (e: React.FormEvent) => {
@@ -73,7 +167,7 @@ function TransactionManagement() {
       setSuccessMessage(message);
       setShowAddMoneyModal(false);
       resetForm();
-      fetchAccounts(); // Refresh to show updated balance
+      fetchData();
       setTimeout(() => setSuccessMessage(''), 3000);
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to add money');
@@ -100,58 +194,90 @@ function TransactionManagement() {
       setSuccessMessage(message);
       setShowRemoveMoneyModal(false);
       resetForm();
-      fetchAccounts(); // Refresh to show updated balance
+      fetchData();
       setTimeout(() => setSuccessMessage(''), 3000);
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to remove money');
     }
   };
 
-  const handleUploadCSV = async (e: React.FormEvent) => {
+  const handleCreateRecurring = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!csvFile) {
-      setError('Please select a CSV file');
-      return;
+    try {
+      setError('');
+      const message = await recurringTransactionService.createRecurringTransaction(recurringFormData);
+      setSuccessMessage(message);
+      setShowRecurringModal(false);
+      resetRecurringForm();
+      fetchData();
+      setTimeout(() => setSuccessMessage(''), 3000);
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Failed to create recurring transaction');
     }
-    if (!csvAccountId) {
-      setError('Please select an account');
-      return;
-    }
+  };
+
+  const handleDeleteTransaction = async () => {
+    if (!selectedTransaction) return;
 
     try {
       setError('');
-      const message = await transactionService.uploadCSV(csvFile, csvAccountId);
+      let message: string;
+      if (selectedTransaction.isRecurring) {
+        message = await recurringTransactionService.deleteRecurringTransaction(selectedTransaction.id);
+      } else {
+        message = await transactionService.deleteTransaction(selectedTransaction.id);
+      }
       setSuccessMessage(message);
-      setShowUploadCSVModal(false);
-      setCsvFile(null);
-      fetchAccounts(); // Refresh to show updated balance
+      setShowDeleteModal(false);
+      setSelectedTransaction(null);
+      fetchData();
       setTimeout(() => setSuccessMessage(''), 3000);
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to upload CSV');
+      setError(err.response?.data?.message || 'Failed to delete transaction');
     }
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      setCsvFile(e.target.files[0]);
+  const handleToggleRecurringActive = async (transaction: UnifiedTransaction) => {
+    if (!transaction.isRecurring) return;
+
+    try {
+      setError('');
+      const message = transaction.isActive
+        ? await recurringTransactionService.pauseRecurringTransaction(transaction.id)
+        : await recurringTransactionService.resumeRecurringTransaction(transaction.id);
+      setSuccessMessage(message);
+      fetchData();
+      setTimeout(() => setSuccessMessage(''), 3000);
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Failed to toggle recurring transaction');
     }
   };
 
-  const getCategoryColor = (cat: TransactionCategory) => {
-    const colors: Record<TransactionCategory, string> = {
-      [TransactionCategory.FOOD]: 'bg-orange-100 text-orange-800',
-      [TransactionCategory.UTILITIES]: 'bg-yellow-100 text-yellow-800',
-      [TransactionCategory.ENTERTAINMENT]: 'bg-pink-100 text-pink-800',
-      [TransactionCategory.TRANSPORTATION]: 'bg-blue-100 text-blue-800',
-      [TransactionCategory.HEALTHCARE]: 'bg-red-100 text-red-800',
-      [TransactionCategory.EDUCATION]: 'bg-purple-100 text-purple-800',
-      [TransactionCategory.GROCERIES]: 'bg-green-100 text-green-800',
-      [TransactionCategory.RENT]: 'bg-indigo-100 text-indigo-800',
-      [TransactionCategory.SALARY]: 'bg-teal-100 text-teal-800',
-      [TransactionCategory.INVESTMENTS]: 'bg-cyan-100 text-cyan-800',
-      [TransactionCategory.MISCELLANEOUS]: 'bg-gray-100 text-gray-800',
-    };
-    return colors[cat] || 'bg-gray-100 text-gray-800';
+  const openDeleteModal = (transaction: UnifiedTransaction) => {
+    setSelectedTransaction(transaction);
+    setShowDeleteModal(true);
+  };
+
+  const getTypeColor = (type: TransactionType) => {
+    return type === TransactionType.INCOME
+      ? 'bg-green-100 text-green-800'
+      : 'bg-red-100 text-red-800';
+  };
+
+  const getFrequencyColor = (frequency?: RecurringFrequency) => {
+    if (!frequency) return 'bg-gray-100 text-gray-800';
+    switch (frequency) {
+      case RecurringFrequency.DAILY:
+        return 'bg-red-100 text-red-800';
+      case RecurringFrequency.WEEKLY:
+        return 'bg-orange-100 text-orange-800';
+      case RecurringFrequency.MONTHLY:
+        return 'bg-blue-100 text-blue-800';
+      case RecurringFrequency.YEARLY:
+        return 'bg-green-100 text-green-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
+    }
   };
 
   return (
@@ -187,7 +313,7 @@ function TransactionManagement() {
         {loading && (
           <div className="text-center py-8">
             <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-            <p className="text-gray-600 mt-4">Loading accounts...</p>
+            <p className="text-gray-600 mt-4">Loading transactions...</p>
           </div>
         )}
 
@@ -196,7 +322,7 @@ function TransactionManagement() {
           <div className="text-center py-16 bg-white rounded-lg shadow">
             <p className="text-gray-600 mb-4">No accounts found. Please create an account first.</p>
             <Link
-              to="/accounts"
+              to="/accounts/manage"
               className="inline-block px-6 py-2 bg-blue-600 text-white rounded font-medium hover:bg-blue-700 transition-colors"
             >
               Go to Account Management
@@ -232,7 +358,7 @@ function TransactionManagement() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
                 </svg>
               </div>
-              <p className="text-gray-600 mb-4">Record expenses or withdrawals from your account</p>
+              <p className="text-gray-600 mb-4">Record expenses or withdrawals</p>
               <button
                 onClick={() => setShowRemoveMoneyModal(true)}
                 className="w-full px-4 py-2 bg-red-600 text-white rounded font-medium hover:bg-red-700 transition-colors"
@@ -241,75 +367,171 @@ function TransactionManagement() {
               </button>
             </div>
 
-            {/* Upload CSV Card */}
+            {/* Create Recurring Transaction Card */}
             <div className="bg-white rounded-lg shadow p-6">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-xl font-bold text-gray-800">Upload CSV</h3>
-                <svg className="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                <h3 className="text-xl font-bold text-gray-800">Recurring</h3>
+                <svg className="w-8 h-8 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                 </svg>
               </div>
-              <p className="text-gray-600 mb-4">Import multiple transactions from a CSV file</p>
+              <p className="text-gray-600 mb-4">Set up automatic recurring transactions</p>
               <button
-                onClick={() => setShowUploadCSVModal(true)}
-                className="w-full px-4 py-2 bg-blue-600 text-white rounded font-medium hover:bg-blue-700 transition-colors"
+                onClick={() => {
+                  resetRecurringForm();
+                  setShowRecurringModal(true);
+                }}
+                className="w-full px-4 py-2 bg-purple-600 text-white rounded font-medium hover:bg-purple-700 transition-colors"
               >
-                Upload CSV
+                Create Recurring
               </button>
             </div>
           </div>
         )}
 
-        {/* Accounts Overview */}
+        {/* Transactions Table */}
         {!loading && accounts.length > 0 && (
           <div className="bg-white rounded-lg shadow overflow-hidden">
-            <div className="px-6 py-4 bg-gray-50 border-b border-gray-200">
-              <h3 className="text-lg font-semibold text-gray-800">Your Accounts</h3>
+            <div className="px-6 py-4 bg-gray-50 border-b border-gray-200 flex justify-between items-center">
+              <h3 className="text-lg font-semibold text-gray-800">All Transactions</h3>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setFilterType('all')}
+                  className={`px-4 py-1 rounded text-sm font-medium ${filterType === 'all' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'}`}
+                >
+                  All
+                </button>
+                <button
+                  onClick={() => setFilterType('one-time')}
+                  className={`px-4 py-1 rounded text-sm font-medium ${filterType === 'one-time' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'}`}
+                >
+                  One-Time
+                </button>
+                <button
+                  onClick={() => setFilterType('recurring')}
+                  className={`px-4 py-1 rounded text-sm font-medium ${filterType === 'recurring' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'}`}
+                >
+                  Recurring
+                </button>
+              </div>
             </div>
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Account Name
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Type
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Balance
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {accounts.map((account) => (
-                  <tr key={account.accountId}>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-900">{account.accountName}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">{account.accountType}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-semibold text-gray-900">${account.currentBalance.toFixed(2)}</div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+
+            {getUnifiedTransactions().length === 0 ? (
+              <div className="text-center py-16">
+                <p className="text-gray-600">No transactions found</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Name
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Amount
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Type
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Category
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Account
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Recurring
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Date
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Actions
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {getUnifiedTransactions().map((transaction) => (
+                      <tr key={transaction.id}>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm font-medium text-gray-900">{transaction.name}</div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className={`text-sm font-semibold ${transaction.type === TransactionType.INCOME ? 'text-green-600' : 'text-red-600'}`}>
+                            {transaction.type === TransactionType.INCOME ? '+' : '-'}${transaction.amount.toFixed(2)}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className={`px-3 py-1 rounded-full text-xs font-medium ${getTypeColor(transaction.type)}`}>
+                            {transaction.type}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-900">{transaction.category}</div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-900">{transaction.accountName}</div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          {transaction.isRecurring ? (
+                            <div>
+                              <span className={`px-3 py-1 rounded-full text-xs font-medium ${getFrequencyColor(transaction.frequency)}`}>
+                                {transaction.frequency}
+                              </span>
+                              {transaction.isActive !== undefined && (
+                                <div className="mt-1">
+                                  <span className={`text-xs ${transaction.isActive ? 'text-green-600' : 'text-gray-400'}`}>
+                                    {transaction.isActive ? 'Active' : 'Paused'}
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-xs text-gray-400">One-time</span>
+                          )}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-500">
+                            {transaction.isRecurring && transaction.nextExecutionDate
+                              ? new Date(transaction.nextExecutionDate).toLocaleDateString()
+                              : new Date(transaction.createdAt).toLocaleDateString()}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                          {transaction.isRecurring && (
+                            <button
+                              onClick={() => handleToggleRecurringActive(transaction)}
+                              className="text-yellow-600 hover:text-yellow-900 mr-4"
+                            >
+                              {transaction.isActive ? 'Pause' : 'Resume'}
+                            </button>
+                          )}
+                          <button
+                            onClick={() => openDeleteModal(transaction)}
+                            className="text-red-600 hover:text-red-900"
+                          >
+                            Delete
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         )}
       </main>
 
-      {/* Add Money Modal */}
+      {/* Add Money Modal - keeping existing */}
       {showAddMoneyModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
             <h3 className="text-xl font-bold text-gray-800 mb-4">Add Money (Income)</h3>
             <form onSubmit={handleAddMoney}>
               <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Select Account
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Select Account</label>
                 <select
                   value={selectedAccountId}
                   onChange={(e) => setSelectedAccountId(e.target.value)}
@@ -324,9 +546,7 @@ function TransactionManagement() {
                 </select>
               </div>
               <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Amount
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Amount</label>
                 <input
                   type="number"
                   step="0.01"
@@ -339,54 +559,36 @@ function TransactionManagement() {
                 />
               </div>
               <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Description (Optional)
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Description (Optional)</label>
                 <input
                   type="text"
                   value={transactionName}
                   onChange={(e) => setTransactionName(e.target.value)}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
-                  placeholder="e.g., Salary, Gift, Bonus"
+                  placeholder="e.g., Salary, Gift"
                 />
               </div>
               <div className="mb-6">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Category
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Category</label>
                 <select
                   value={category}
                   onChange={(e) => setCategory(e.target.value as TransactionCategory)}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
                 >
-                  <option value={TransactionCategory.SALARY}>Salary</option>
-                  <option value={TransactionCategory.INVESTMENTS}>Investments</option>
-                  <option value={TransactionCategory.MISCELLANEOUS}>Miscellaneous</option>
-                  <option value={TransactionCategory.FOOD}>Food</option>
-                  <option value={TransactionCategory.UTILITIES}>Utilities</option>
-                  <option value={TransactionCategory.ENTERTAINMENT}>Entertainment</option>
-                  <option value={TransactionCategory.TRANSPORTATION}>Transportation</option>
-                  <option value={TransactionCategory.HEALTHCARE}>Healthcare</option>
-                  <option value={TransactionCategory.EDUCATION}>Education</option>
-                  <option value={TransactionCategory.GROCERIES}>Groceries</option>
-                  <option value={TransactionCategory.RENT}>Rent</option>
+                  {Object.values(TransactionCategory).map((cat) => (
+                    <option key={cat} value={cat}>{cat}</option>
+                  ))}
                 </select>
               </div>
               <div className="flex gap-3">
                 <button
                   type="button"
-                  onClick={() => {
-                    setShowAddMoneyModal(false);
-                    resetForm();
-                  }}
-                  className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded font-medium hover:bg-gray-50 transition-colors"
+                  onClick={() => { setShowAddMoneyModal(false); resetForm(); }}
+                  className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded font-medium hover:bg-gray-50"
                 >
                   Cancel
                 </button>
-                <button
-                  type="submit"
-                  className="flex-1 px-4 py-2 bg-green-600 text-white rounded font-medium hover:bg-green-700 transition-colors"
-                >
+                <button type="submit" className="flex-1 px-4 py-2 bg-green-600 text-white rounded font-medium hover:bg-green-700">
                   Add Money
                 </button>
               </div>
@@ -395,16 +597,14 @@ function TransactionManagement() {
         </div>
       )}
 
-      {/* Remove Money Modal */}
+      {/* Remove Money Modal - keeping existing */}
       {showRemoveMoneyModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
             <h3 className="text-xl font-bold text-gray-800 mb-4">Remove Money (Expense)</h3>
             <form onSubmit={handleRemoveMoney}>
               <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Select Account
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Select Account</label>
                 <select
                   value={selectedAccountId}
                   onChange={(e) => setSelectedAccountId(e.target.value)}
@@ -419,9 +619,7 @@ function TransactionManagement() {
                 </select>
               </div>
               <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Amount
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Amount</label>
                 <input
                   type="number"
                   step="0.01"
@@ -434,54 +632,36 @@ function TransactionManagement() {
                 />
               </div>
               <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Description (Optional)
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Description (Optional)</label>
                 <input
                   type="text"
                   value={transactionName}
                   onChange={(e) => setTransactionName(e.target.value)}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
-                  placeholder="e.g., Groceries, Rent, Utilities"
+                  placeholder="e.g., Groceries, Rent"
                 />
               </div>
               <div className="mb-6">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Category
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Category</label>
                 <select
                   value={category}
                   onChange={(e) => setCategory(e.target.value as TransactionCategory)}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
                 >
-                  <option value={TransactionCategory.GROCERIES}>Groceries</option>
-                  <option value={TransactionCategory.RENT}>Rent</option>
-                  <option value={TransactionCategory.UTILITIES}>Utilities</option>
-                  <option value={TransactionCategory.FOOD}>Food</option>
-                  <option value={TransactionCategory.ENTERTAINMENT}>Entertainment</option>
-                  <option value={TransactionCategory.TRANSPORTATION}>Transportation</option>
-                  <option value={TransactionCategory.HEALTHCARE}>Healthcare</option>
-                  <option value={TransactionCategory.EDUCATION}>Education</option>
-                  <option value={TransactionCategory.MISCELLANEOUS}>Miscellaneous</option>
-                  <option value={TransactionCategory.SALARY}>Salary</option>
-                  <option value={TransactionCategory.INVESTMENTS}>Investments</option>
+                  {Object.values(TransactionCategory).map((cat) => (
+                    <option key={cat} value={cat}>{cat}</option>
+                  ))}
                 </select>
               </div>
               <div className="flex gap-3">
                 <button
                   type="button"
-                  onClick={() => {
-                    setShowRemoveMoneyModal(false);
-                    resetForm();
-                  }}
-                  className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded font-medium hover:bg-gray-50 transition-colors"
+                  onClick={() => { setShowRemoveMoneyModal(false); resetForm(); }}
+                  className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded font-medium hover:bg-gray-50"
                 >
                   Cancel
                 </button>
-                <button
-                  type="submit"
-                  className="flex-1 px-4 py-2 bg-red-600 text-white rounded font-medium hover:bg-red-700 transition-colors"
-                >
+                <button type="submit" className="flex-1 px-4 py-2 bg-red-600 text-white rounded font-medium hover:bg-red-700">
                   Remove Money
                 </button>
               </div>
@@ -490,74 +670,138 @@ function TransactionManagement() {
         </div>
       )}
 
-      {/* Upload CSV Modal */}
-      {showUploadCSVModal && (
+      {/* Create Recurring Transaction Modal */}
+      {showRecurringModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
-            <h3 className="text-xl font-bold text-gray-800 mb-4">Upload CSV File</h3>
-            <form onSubmit={handleUploadCSV}>
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Select Account
-                </label>
-                <select
-                  value={csvAccountId}
-                  onChange={(e) => setCsvAccountId(e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  required
-                >
-                  {accounts.map((account) => (
-                    <option key={account.accountId} value={account.accountId}>
-                      {account.accountName} (${account.currentBalance.toFixed(2)})
-                    </option>
-                  ))}
-                </select>
+          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full p-6 max-h-[90vh] overflow-y-auto">
+            <h3 className="text-xl font-bold text-gray-800 mb-4">Create Recurring Transaction</h3>
+            <form onSubmit={handleCreateRecurring}>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Transaction Name</label>
+                  <input
+                    type="text"
+                    required
+                    value={recurringFormData.transactionName}
+                    onChange={(e) => setRecurringFormData({ ...recurringFormData, transactionName: e.target.value })}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    placeholder="e.g., Monthly Rent"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Amount ($)</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    required
+                    value={recurringFormData.amount || ''}
+                    onChange={(e) => setRecurringFormData({ ...recurringFormData, amount: parseFloat(e.target.value) || 0 })}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    placeholder="0.00"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Transaction Type</label>
+                  <select
+                    value={recurringFormData.transactionType}
+                    onChange={(e) => setRecurringFormData({ ...recurringFormData, transactionType: e.target.value as TransactionType })}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  >
+                    <option value={TransactionType.INCOME}>Income</option>
+                    <option value={TransactionType.EXPENSE}>Expense</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Category</label>
+                  <select
+                    value={recurringFormData.transactionCategory}
+                    onChange={(e) => setRecurringFormData({ ...recurringFormData, transactionCategory: e.target.value as TransactionCategory })}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  >
+                    {Object.values(TransactionCategory).map((category) => (
+                      <option key={category} value={category}>{category}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Frequency</label>
+                  <select
+                    value={recurringFormData.recurringFrequency}
+                    onChange={(e) => setRecurringFormData({ ...recurringFormData, recurringFrequency: e.target.value as RecurringFrequency })}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  >
+                    <option value={RecurringFrequency.DAILY}>Daily</option>
+                    <option value={RecurringFrequency.WEEKLY}>Weekly</option>
+                    <option value={RecurringFrequency.MONTHLY}>Monthly</option>
+                    <option value={RecurringFrequency.YEARLY}>Yearly</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Next Execution Date</label>
+                  <input
+                    type="date"
+                    required
+                    value={recurringFormData.nextExecutionDate}
+                    onChange={(e) => setRecurringFormData({ ...recurringFormData, nextExecutionDate: e.target.value })}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  />
+                </div>
+                <div className="col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Account</label>
+                  <select
+                    value={recurringFormData.accountId}
+                    onChange={(e) => setRecurringFormData({ ...recurringFormData, accountId: e.target.value })}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    required
+                  >
+                    {accounts.map((account) => (
+                      <option key={account.accountId} value={account.accountId}>
+                        {account.accountName} - ${account.currentBalance.toFixed(2)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  CSV File
-                </label>
-                <input
-                  type="file"
-                  accept=".csv"
-                  onChange={handleFileChange}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  required
-                />
-                {csvFile && (
-                  <p className="mt-2 text-sm text-gray-600">Selected: {csvFile.name}</p>
-                )}
-              </div>
-              <div className="mb-6 p-4 bg-blue-50 rounded-lg">
-                <h4 className="text-sm font-semibold text-gray-800 mb-2">CSV Format:</h4>
-                <p className="text-xs text-gray-600 mb-2">Your CSV should have the following columns:</p>
-                <ul className="text-xs text-gray-600 list-disc list-inside space-y-1">
-                  <li>Transaction Name (optional)</li>
-                  <li>Amount (required)</li>
-                  <li>Category (required)</li>
-                  <li>Type (INCOME or EXPENSE)</li>
-                  <li>Created At (ISO format: yyyy-MM-dd'T'HH:mm:ss)</li>
-                </ul>
-              </div>
-              <div className="flex gap-3">
+              <div className="flex gap-3 mt-6">
                 <button
                   type="button"
-                  onClick={() => {
-                    setShowUploadCSVModal(false);
-                    setCsvFile(null);
-                  }}
-                  className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded font-medium hover:bg-gray-50 transition-colors"
+                  onClick={() => { setShowRecurringModal(false); resetRecurringForm(); }}
+                  className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded font-medium hover:bg-gray-50"
                 >
                   Cancel
                 </button>
-                <button
-                  type="submit"
-                  className="flex-1 px-4 py-2 bg-blue-600 text-white rounded font-medium hover:bg-blue-700 transition-colors"
-                >
-                  Upload
+                <button type="submit" className="flex-1 px-4 py-2 bg-purple-600 text-white rounded font-medium hover:bg-purple-700">
+                  Create
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && selectedTransaction && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+            <h3 className="text-xl font-bold text-gray-800 mb-4">Delete Transaction</h3>
+            <p className="text-gray-600 mb-6">
+              Are you sure you want to delete <strong>{selectedTransaction.name}</strong>?
+              {selectedTransaction.isRecurring && ' This will stop all future automatic transactions.'}
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => { setShowDeleteModal(false); setSelectedTransaction(null); }}
+                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded font-medium hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteTransaction}
+                className="flex-1 px-4 py-2 bg-red-600 text-white rounded font-medium hover:bg-red-700"
+              >
+                Delete
+              </button>
+            </div>
           </div>
         </div>
       )}
