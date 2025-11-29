@@ -4,6 +4,7 @@ import Login from './pages/Login';
 import Signup from './pages/Signup';
 import AccountManagement from './pages/AccountManagement';
 import TransactionManagement from './pages/TransactionManagement';
+import RecurringTransactionManagement from './pages/RecurringTransactionManagement';
 
 function App() {
   return (
@@ -14,6 +15,7 @@ function App() {
         <Route path="/signup" element={<Signup />} />
         <Route path="/accounts/manage" element={<AccountManagement />} />
         <Route path="/transactions/manage" element={<TransactionManagement />} />
+        <Route path="/recurring-transactions/manage" element={<RecurringTransactionManagement />} />
       </Routes>
     </Router>
   );

@@ -2,11 +2,14 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import Header from '../components/Header';
 import accountService from '../services/accountService';
+import budgetService from '../services/budgetService';
 import { AccountType } from '../types/account';
 import type { Account, CreateAccountData, UpdateAccountData } from '../types/account';
+import type { CreateBudgetData, UpdateBudgetData, Budget } from '../types/budget';
 
 function AccountManagement() {
   const [accounts, setAccounts] = useState<Account[]>([]);
+  const [budgets, setBudgets] = useState<Map<string, Budget>>(new Map());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>('');
   const [successMessage, setSuccessMessage] = useState<string>('');
@@ -15,12 +18,21 @@ function AccountManagement() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showBudgetModal, setShowBudgetModal] = useState(false);
   const [selectedAccount, setSelectedAccount] = useState<Account | null>(null);
+  const [selectedBudget, setSelectedBudget] = useState<Budget | null>(null);
 
   // Form states
   const [formData, setFormData] = useState<CreateAccountData>({
     accountName: '',
     accountType: AccountType.CHECKING,
+  });
+
+  // Budget form states
+  const [budgetFormData, setBudgetFormData] = useState<CreateBudgetData>({
+    budgetAmount: 0,
+    alertThreshold: 80,
+    accountId: '',
   });
 
   useEffect(() => {
@@ -33,6 +45,18 @@ function AccountManagement() {
       setError('');
       const data = await accountService.getAccounts();
       setAccounts(data);
+
+      // Fetch budgets for all accounts
+      const budgetMap = new Map<string, Budget>();
+      await Promise.all(
+        data.map(async (account) => {
+          const budget = await budgetService.getBudgetByAccount(account.accountId);
+          if (budget) {
+            budgetMap.set(account.accountId, budget);
+          }
+        })
+      );
+      setBudgets(budgetMap);
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to fetch accounts');
     } finally {
@@ -92,6 +116,102 @@ function AccountManagement() {
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to delete account');
     }
+  };
+
+  const handleBudgetSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedAccount) return;
+
+    try {
+      setError('');
+      let message: string;
+
+      if (selectedBudget) {
+        // Update existing budget
+        const updateData: UpdateBudgetData = {
+          budgetId: selectedBudget.budgetId,
+          budgetAmount: budgetFormData.budgetAmount,
+          alertThreshold: budgetFormData.alertThreshold,
+          isActive: true,
+        };
+        message = await budgetService.updateBudget(updateData);
+      } else {
+        // Create new budget
+        message = await budgetService.createBudget(budgetFormData);
+      }
+
+      setSuccessMessage(message);
+      setShowBudgetModal(false);
+      setSelectedAccount(null);
+      setSelectedBudget(null);
+      resetBudgetForm();
+
+      // Refresh the budget data to show updated values
+      await fetchAccounts();
+
+      setTimeout(() => setSuccessMessage(''), 3000);
+    } catch (err: any) {
+      // Extract error message properly from response
+      let errorMessage = 'Failed to save budget';
+      if (err.response?.data) {
+        if (typeof err.response.data === 'string') {
+          errorMessage = err.response.data;
+        } else if (err.response.data.message) {
+          errorMessage = err.response.data.message;
+        } else if (err.response.data.error) {
+          errorMessage = err.response.data.error;
+        }
+      } else if (err.message) {
+        errorMessage = err.message;
+      }
+
+      // Handle duplicate budget error specifically
+      if (errorMessage.includes('duplicate key') || errorMessage.includes('already exists')) {
+        errorMessage = 'This account already has a budget. Please update the existing budget instead of creating a new one.';
+      }
+
+      setError(errorMessage);
+    }
+  };
+
+  const openBudgetModal = async (account: Account) => {
+    setSelectedAccount(account);
+    setError('');
+
+    try {
+      // Fetch existing budget for this account
+      const existingBudget = await budgetService.getBudgetByAccount(account.accountId);
+
+      if (existingBudget) {
+        // Budget exists - populate form for update
+        setSelectedBudget(existingBudget);
+        setBudgetFormData({
+          budgetAmount: existingBudget.budgetAmount,
+          alertThreshold: existingBudget.alertThreshold,
+          accountId: account.accountId,
+        });
+      } else {
+        // No budget exists - prepare for creation
+        setSelectedBudget(null);
+        setBudgetFormData({
+          budgetAmount: 0,
+          alertThreshold: 80,
+          accountId: account.accountId,
+        });
+      }
+
+      setShowBudgetModal(true);
+    } catch (err: any) {
+      setError('Failed to load budget information');
+    }
+  };
+
+  const resetBudgetForm = () => {
+    setBudgetFormData({
+      budgetAmount: 0,
+      alertThreshold: 80,
+      accountId: '',
+    });
   };
 
   const openEditModal = (account: Account) => {
@@ -197,6 +317,9 @@ function AccountManagement() {
                     Balance
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Budget
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Created
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -219,11 +342,35 @@ function AccountManagement() {
                       <div className="text-sm text-gray-900">${account.currentBalance.toFixed(2)}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
+                      {(() => {
+                        const budget = budgets.get(account.accountId);
+                        if (budget && budget.budgetAmount != null) {
+                          return (
+                            <div>
+                              <div className="text-sm font-medium text-gray-900">
+                                ${Number(budget.budgetAmount).toFixed(2)}/mo
+                              </div>
+                              <div className="text-xs text-gray-500">
+                                Spent: ${Number(budget.currentSpent || 0).toFixed(2)}
+                              </div>
+                            </div>
+                          );
+                        }
+                        return <span className="text-xs text-gray-400">No budget</span>;
+                      })()}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm text-gray-500">
                         {new Date(account.createdAt).toLocaleDateString()}
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                      <button
+                        onClick={() => openBudgetModal(account)}
+                        className="text-green-600 hover:text-green-900 mr-4"
+                      >
+                        Set Budget
+                      </button>
                       <button
                         onClick={() => openEditModal(account)}
                         className="text-blue-600 hover:text-blue-900 mr-4"
@@ -386,6 +533,89 @@ function AccountManagement() {
                 Delete
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Budget Modal */}
+      {showBudgetModal && selectedAccount && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+            <h3 className="text-xl font-bold text-gray-800 mb-4">
+              {selectedBudget ? 'Update' : 'Set'} Budget for {selectedAccount.accountName}
+            </h3>
+            {selectedBudget && (
+              <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg">
+                <p className="text-sm text-green-800">
+                  ✓ Existing budget found. Updating budget values.
+                </p>
+              </div>
+            )}
+            {!selectedBudget && (
+              <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                <p className="text-sm text-blue-800">
+                  Creating a new budget for this account.
+                </p>
+              </div>
+            )}
+            <form onSubmit={handleBudgetSubmit}>
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Monthly Budget Amount ($)
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  required
+                  value={budgetFormData.budgetAmount || ''}
+                  onChange={(e) => setBudgetFormData({ ...budgetFormData, budgetAmount: parseFloat(e.target.value) || 0 })}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="e.g., 1000.00"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Set a spending limit for this account (monthly period)
+                </p>
+              </div>
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Alert Threshold (%)
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  max="100"
+                  required
+                  value={budgetFormData.alertThreshold || ''}
+                  onChange={(e) => setBudgetFormData({ ...budgetFormData, alertThreshold: parseInt(e.target.value) || 80 })}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="80"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  You'll be alerted when spending reaches this percentage of your budget
+                </p>
+              </div>
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowBudgetModal(false);
+                    setSelectedAccount(null);
+                    setSelectedBudget(null);
+                    resetBudgetForm();
+                  }}
+                  className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded font-medium hover:bg-gray-50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 px-4 py-2 bg-green-600 text-white rounded font-medium hover:bg-green-700 transition-colors"
+                >
+                  {selectedBudget ? 'Update' : 'Set'} Budget
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

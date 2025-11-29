@@ -1,6 +1,7 @@
 package com.example.VaultTrackBackend.model.entity;
 
 import com.example.VaultTrackBackend.model.enums.BudgetPeriod;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -31,6 +32,7 @@ public class Budget {
 
     @OneToOne
     @JoinColumn(name = "account_id", unique = true)
+    @JsonIgnore
     private Account account;
 
     @Column(name = "budget_amount", precision = 15, scale = 2, nullable = false)
