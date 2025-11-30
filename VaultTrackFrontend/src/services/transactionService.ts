@@ -59,6 +59,62 @@ class TransactionService {
     });
     return response.data;
   }
+
+  /**
+   * Export transactions to CSV file
+   * @param filters - Optional filters for the export (transactionName, transactionType, transactionCategory, accountId, start, end)
+   * @returns void - Downloads the CSV file
+   */
+  async exportTransactionsToCsv(filters?: {
+    transactionName?: string;
+    transactionType?: string;
+    transactionCategory?: string;
+    accountId?: string;
+    start?: string;
+    end?: string;
+  }): Promise<void> {
+    // Build query parameters
+    const params = new URLSearchParams();
+    if (filters?.transactionName) params.append('transactionName', filters.transactionName);
+    if (filters?.transactionType) params.append('transactionType', filters.transactionType);
+    if (filters?.transactionCategory) params.append('transactionCategory', filters.transactionCategory);
+    if (filters?.accountId) params.append('accountId', filters.accountId);
+    if (filters?.start) params.append('start', filters.start);
+    if (filters?.end) params.append('end', filters.end);
+
+    const response = await apiClient.get('/transactions/export/csv', {
+      params,
+      responseType: 'blob', // Important for binary data
+    });
+
+    // Create a blob from the response
+    const blob = new Blob([response.data], { type: 'text/csv' });
+
+    // Create a temporary URL for the blob
+    const url = window.URL.createObjectURL(blob);
+
+    // Create a temporary anchor element and trigger download
+    const link = document.createElement('a');
+    link.href = url;
+
+    // Extract filename from Content-Disposition header if available, otherwise use default
+    const contentDisposition = response.headers['content-disposition'];
+    let filename = 'transactions.csv';
+    if (contentDisposition) {
+      const filenameMatch = contentDisposition.match(/filename="?(.+)"?/);
+      if (filenameMatch) {
+        filename = filenameMatch[1];
+      }
+    }
+
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+
+    // Cleanup
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+  }
 }
 
 export default new TransactionService();

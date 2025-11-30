@@ -14,7 +14,7 @@ import java.util.UUID;
 public interface TransactionRepository extends JpaRepository<Transaction, UUID> {
 
     // Without date filters
-    @Query("SELECT t FROM Transaction t WHERE t.user.userId = :userId " +
+    @Query("SELECT t FROM Transaction t JOIN FETCH t.account WHERE t.user.userId = :userId " +
             "AND (:transactionName = '' OR :transactionName IS NULL OR LOWER(t.transactionName) LIKE LOWER(CONCAT('%', :transactionName, '%'))) " +
             "AND (:transactionType IS NULL OR t.transactionType = :transactionType) " +
             "AND (:transactionCategory IS NULL OR t.transactionCategory = :transactionCategory) " +
@@ -29,7 +29,7 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID> 
     );
 
     // With date filters (both required)
-    @Query("SELECT t FROM Transaction t WHERE t.user.userId = :userId " +
+    @Query("SELECT t FROM Transaction t JOIN FETCH t.account WHERE t.user.userId = :userId " +
             "AND (:transactionName = '' OR :transactionName IS NULL OR LOWER(t.transactionName) LIKE LOWER(CONCAT('%', :transactionName, '%'))) " +
             "AND (:transactionType IS NULL OR t.transactionType = :transactionType) " +
             "AND (:transactionCategory IS NULL OR t.transactionCategory = :transactionCategory) " +
