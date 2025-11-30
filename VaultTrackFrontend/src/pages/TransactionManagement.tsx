@@ -44,12 +44,18 @@ function TransactionManagement() {
   const [showRecurringModal, setShowRecurringModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showAiFeedbackModal, setShowAiFeedbackModal] = useState(false);
+  const [showImportCsvModal, setShowImportCsvModal] = useState(false);
   const [selectedTransaction, setSelectedTransaction] = useState<UnifiedTransaction | null>(null);
 
   // AI Feedback states
   const [aiPrompt, setAiPrompt] = useState<string>('');
   const [aiResponse, setAiResponse] = useState<string>('');
   const [aiLoading, setAiLoading] = useState(false);
+
+  // CSV Import states
+  const [csvFile, setCsvFile] = useState<File | null>(null);
+  const [importAccountId, setImportAccountId] = useState<string>('');
+  const [csvUploading, setCsvUploading] = useState(false);
 
   // Form states for regular transactions
   const [selectedAccountId, setSelectedAccountId] = useState<string>('');
@@ -298,6 +304,45 @@ function TransactionManagement() {
     setShowAiFeedbackModal(true);
   };
 
+  const openImportCsvModal = () => {
+    setCsvFile(null);
+    setImportAccountId(accounts.length > 0 ? accounts[0].accountId : '');
+    setShowImportCsvModal(true);
+  };
+
+  const handleCsvFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      setCsvFile(e.target.files[0]);
+    }
+  };
+
+  const handleImportCsv = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!csvFile) {
+      setError('Please select a CSV file');
+      return;
+    }
+    if (!importAccountId) {
+      setError('Please select an account');
+      return;
+    }
+
+    try {
+      setError('');
+      setCsvUploading(true);
+      const message = await transactionService.uploadCSV(csvFile, importAccountId);
+      setSuccessMessage(message);
+      setShowImportCsvModal(false);
+      setCsvFile(null);
+      fetchData();
+      setTimeout(() => setSuccessMessage(''), 3000);
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Failed to import CSV');
+    } finally {
+      setCsvUploading(false);
+    }
+  };
+
   const openDeleteModal = (transaction: UnifiedTransaction) => {
     setSelectedTransaction(transaction);
     setShowDeleteModal(true);
@@ -474,6 +519,15 @@ function TransactionManagement() {
                   className={`px-4 py-1 rounded text-sm font-medium ${filterType === 'recurring' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'}`}
                 >
                   Recurring
+                </button>
+                <button
+                  onClick={openImportCsvModal}
+                  className="px-4 py-1 rounded text-sm font-medium bg-indigo-600 text-white hover:bg-indigo-700 transition-colors flex items-center gap-2"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                  </svg>
+                  Import CSV
                 </button>
                 <button
                   onClick={handleExportToCsv}
@@ -927,6 +981,82 @@ function TransactionManagement() {
                   disabled={aiLoading}
                 >
                   {aiLoading ? 'Getting Advice...' : 'Get AI Advice'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Import CSV Modal */}
+      {showImportCsvModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+            <h3 className="text-xl font-bold text-gray-800 mb-4">Import Transactions from CSV</h3>
+            <p className="text-gray-600 mb-4">Upload a CSV file to import transactions into an account.</p>
+
+            <form onSubmit={handleImportCsv}>
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">Select Account</label>
+                <select
+                  value={importAccountId}
+                  onChange={(e) => setImportAccountId(e.target.value)}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  required
+                  disabled={csvUploading}
+                >
+                  {accounts.map((account) => (
+                    <option key={account.accountId} value={account.accountId}>
+                      {account.accountName} (${account.currentBalance.toFixed(2)})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">CSV File</label>
+                <input
+                  type="file"
+                  accept=".csv"
+                  onChange={handleCsvFileChange}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  required
+                  disabled={csvUploading}
+                />
+                {csvFile && (
+                  <p className="text-sm text-gray-600 mt-2">Selected: {csvFile.name}</p>
+                )}
+              </div>
+
+              <div className="mb-4 p-3 bg-gray-50 border border-gray-200 rounded-lg">
+                <p className="text-xs text-gray-600 font-semibold mb-1">Expected CSV Format:</p>
+                <code className="text-xs text-gray-700 block">
+                  Transaction Name,Amount,Category,Type,Created At
+                </code>
+              </div>
+
+              {csvUploading && (
+                <div className="mb-4 text-center py-2">
+                  <div className="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-indigo-600"></div>
+                  <p className="text-gray-600 mt-2 text-sm">Importing transactions...</p>
+                </div>
+              )}
+
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => { setShowImportCsvModal(false); setCsvFile(null); }}
+                  className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded font-medium hover:bg-gray-50"
+                  disabled={csvUploading}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 px-4 py-2 bg-indigo-600 text-white rounded font-medium hover:bg-indigo-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                  disabled={csvUploading}
+                >
+                  {csvUploading ? 'Importing...' : 'Import'}
                 </button>
               </div>
             </form>
