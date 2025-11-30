@@ -47,6 +47,7 @@ function Signup() {
         lastName: formData.lastName
       });
 
+      window.dispatchEvent(new Event('authChange'));
       navigate('/');
     } catch (err) {
       console.error('Signup error:', err);

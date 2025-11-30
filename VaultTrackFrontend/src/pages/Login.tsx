@@ -31,6 +31,7 @@ function Login() {
         password: formData.password
       });
 
+      window.dispatchEvent(new Event('authChange'));
       navigate('/');
     } catch (err) {
       console.error('Login error:', err);
