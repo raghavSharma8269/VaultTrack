@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import ReactMarkdown from 'react-markdown';
 import Header from '../components/Header';
 import accountService from '../services/accountService';
 import transactionService from '../services/transactionService';
@@ -62,6 +63,14 @@ function TransactionManagement() {
   const [aiPrompt, setAiPrompt] = useState<string>('');
   const [aiResponse, setAiResponse] = useState<string>('');
   const [aiLoading, setAiLoading] = useState(false);
+  const [aiFilters, setAiFilters] = useState<TransactionFilters>({
+    start: '',
+    end: '',
+    transactionCategory: undefined,
+    transactionType: undefined,
+    transactionName: '',
+    accountId: '',
+  });
 
   // CSV Import states
   const [csvFile, setCsvFile] = useState<File | null>(null);
@@ -365,7 +374,27 @@ function TransactionManagement() {
       setError('');
       setAiLoading(true);
       setAiResponse('');
-      const response = await openaiService.getAiFeedback(aiPrompt);
+
+      // Build filters object with the same date formatting as fetchData
+      const appliedFilters: TransactionFilters = {};
+
+      // Convert datetime-local format (2025-11-13T19:27) to backend format (2025-11-13 19:27:36)
+      if (aiFilters.start) {
+        appliedFilters.start = aiFilters.start.replace('T', ' ') + ':00';
+      }
+      if (aiFilters.end) {
+        appliedFilters.end = aiFilters.end.replace('T', ' ') + ':00';
+      }
+
+      if (aiFilters.transactionCategory) appliedFilters.transactionCategory = aiFilters.transactionCategory;
+      if (aiFilters.transactionType) appliedFilters.transactionType = aiFilters.transactionType;
+      if (aiFilters.transactionName) appliedFilters.transactionName = aiFilters.transactionName;
+      if (aiFilters.accountId) appliedFilters.accountId = aiFilters.accountId;
+
+      const response = await openaiService.getAiFeedback(
+        aiPrompt,
+        Object.keys(appliedFilters).length > 0 ? appliedFilters : undefined
+      );
       setAiResponse(response);
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to get AI feedback');
@@ -378,6 +407,14 @@ function TransactionManagement() {
   const openAiFeedbackModal = () => {
     setAiPrompt('');
     setAiResponse('');
+    setAiFilters({
+      start: '',
+      end: '',
+      transactionCategory: undefined,
+      transactionType: undefined,
+      transactionName: '',
+      accountId: '',
+    });
     setShowAiFeedbackModal(true);
   };
 
@@ -1160,11 +1197,104 @@ function TransactionManagement() {
       {/* AI Financial Advisor Modal */}
       {showAiFeedbackModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full p-6 max-h-[90vh] overflow-y-auto">
+          <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full p-6 max-h-[90vh] overflow-y-auto">
             <h3 className="text-xl font-bold text-gray-800 mb-4">AI Financial Advisor</h3>
-            <p className="text-gray-600 mb-4">Ask questions about your spending patterns, budget, or get financial advice based on your transactions.</p>
+            <p className="text-gray-600 mb-4">Ask questions about your spending patterns, budget, or get financial advice. Optionally filter which transactions the AI analyzes.</p>
 
             <form onSubmit={handleGetAiFeedback}>
+              {/* AI Filters Section */}
+              <div className="mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                <h4 className="text-sm font-semibold text-gray-800 mb-3">Filter Transactions for AI Analysis (Optional)</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {/* Transaction Name Filter */}
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">Transaction Name</label>
+                    <input
+                      type="text"
+                      value={aiFilters.transactionName}
+                      onChange={(e) => setAiFilters({ ...aiFilters, transactionName: e.target.value })}
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="Search by name..."
+                      disabled={aiLoading}
+                    />
+                  </div>
+
+                  {/* Start Date Filter */}
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">Start Date</label>
+                    <input
+                      type="datetime-local"
+                      value={aiFilters.start}
+                      onChange={(e) => setAiFilters({ ...aiFilters, start: e.target.value })}
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      disabled={aiLoading}
+                    />
+                  </div>
+
+                  {/* End Date Filter */}
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">End Date</label>
+                    <input
+                      type="datetime-local"
+                      value={aiFilters.end}
+                      onChange={(e) => setAiFilters({ ...aiFilters, end: e.target.value })}
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      disabled={aiLoading}
+                    />
+                  </div>
+
+                  {/* Transaction Type Filter */}
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">Transaction Type</label>
+                    <select
+                      value={aiFilters.transactionType || ''}
+                      onChange={(e) => setAiFilters({ ...aiFilters, transactionType: e.target.value ? e.target.value as TransactionType : undefined })}
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      disabled={aiLoading}
+                    >
+                      <option value="">All Types</option>
+                      <option value={TransactionType.INCOME}>Income</option>
+                      <option value={TransactionType.EXPENSE}>Expense</option>
+                    </select>
+                  </div>
+
+                  {/* Transaction Category Filter */}
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">Category</label>
+                    <select
+                      value={aiFilters.transactionCategory || ''}
+                      onChange={(e) => setAiFilters({ ...aiFilters, transactionCategory: e.target.value ? e.target.value as TransactionCategory : undefined })}
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      disabled={aiLoading}
+                    >
+                      <option value="">All Categories</option>
+                      {Object.values(TransactionCategory).map((cat) => (
+                        <option key={cat} value={cat}>{cat}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Account Filter */}
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">Account</label>
+                    <select
+                      value={aiFilters.accountId}
+                      onChange={(e) => setAiFilters({ ...aiFilters, accountId: e.target.value })}
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      disabled={aiLoading}
+                    >
+                      <option value="">All Accounts</option>
+                      {accounts.map((account) => (
+                        <option key={account.accountId} value={account.accountId}>
+                          {account.accountName}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              {/* Question Input */}
               <div className="mb-4">
                 <label className="block text-sm font-medium text-gray-700 mb-2">Your Question</label>
                 <textarea
@@ -1188,7 +1318,25 @@ function TransactionManagement() {
               {aiResponse && (
                 <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
                   <h4 className="font-semibold text-blue-900 mb-2">AI Response:</h4>
-                  <p className="text-gray-800 whitespace-pre-wrap">{aiResponse}</p>
+                  <div className="text-gray-800 markdown-content">
+                    <ReactMarkdown
+                      components={{
+                        h1: ({node, ...props}) => <h1 className="text-2xl font-bold mt-4 mb-2" {...props} />,
+                        h2: ({node, ...props}) => <h2 className="text-xl font-bold mt-3 mb-2" {...props} />,
+                        h3: ({node, ...props}) => <h3 className="text-lg font-bold mt-2 mb-1" {...props} />,
+                        p: ({node, ...props}) => <p className="mb-2" {...props} />,
+                        ul: ({node, ...props}) => <ul className="list-disc list-inside mb-2" {...props} />,
+                        ol: ({node, ...props}) => <ol className="list-decimal list-inside mb-2" {...props} />,
+                        li: ({node, ...props}) => <li className="mb-1" {...props} />,
+                        code: ({node, ...props}) => <code className="bg-gray-200 px-1 rounded text-sm" {...props} />,
+                        pre: ({node, ...props}) => <pre className="bg-gray-200 p-2 rounded mb-2 overflow-x-auto" {...props} />,
+                        strong: ({node, ...props}) => <strong className="font-bold" {...props} />,
+                        em: ({node, ...props}) => <em className="italic" {...props} />,
+                      }}
+                    >
+                      {aiResponse}
+                    </ReactMarkdown>
+                  </div>
                 </div>
               )}
 

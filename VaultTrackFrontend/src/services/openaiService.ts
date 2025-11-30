@@ -1,28 +1,20 @@
 import apiClient from '../api/client';
+import type { TransactionFilters } from '../types/transaction';
 
 interface AiFeedbackRequest {
   userPrompt: string;
-}
-
-interface AiFeedbackFilters {
-  start?: string;
-  end?: string;
-  transactionCategory?: string;
-  transactionType?: string;
-  transactionName?: string;
-  accountId?: string;
 }
 
 class OpenAIService {
   /**
    * Get AI feedback on financial transactions
    * @param userPrompt - The user's question or feedback request
-   * @param filters - Optional filters for transactions to analyze
+   * @param filters - Optional filters for transactions to analyze (start, end, transactionCategory, transactionType, transactionName, accountId)
    * @returns AI-generated financial advice
    */
   async getAiFeedback(
     userPrompt: string,
-    filters?: AiFeedbackFilters
+    filters?: TransactionFilters
   ): Promise<string> {
     const params = new URLSearchParams();
 
