@@ -7,7 +7,7 @@ import recurringTransactionService from '../services/recurringTransactionService
 import openaiService from '../services/openaiService';
 import type { Account } from '../types/account';
 import { TransactionType, TransactionCategory } from '../types/transaction';
-import type { CreateTransactionData, Transaction } from '../types/transaction';
+import type { CreateTransactionData, Transaction, TransactionFilters } from '../types/transaction';
 import type { RecurringTransaction, CreateRecurringTransactionData } from '../types/recurringTransaction';
 import { RecurringFrequency } from '../types/recurringTransaction';
 
@@ -37,6 +37,17 @@ function TransactionManagement() {
 
   // Filter states
   const [filterType, setFilterType] = useState<'all' | 'one-time' | 'recurring'>('all');
+  const [showFilters, setShowFilters] = useState(false);
+
+  // Advanced filter states
+  const [filters, setFilters] = useState<TransactionFilters>({
+    start: '',
+    end: '',
+    transactionCategory: undefined,
+    transactionType: undefined,
+    transactionName: '',
+    accountId: '',
+  });
 
   // Modal states
   const [showAddMoneyModal, setShowAddMoneyModal] = useState(false);
@@ -78,12 +89,32 @@ function TransactionManagement() {
     fetchData();
   }, []);
 
-  const fetchData = async () => {
+  const fetchData = async (customFilters?: TransactionFilters) => {
     try {
       setLoading(true);
       setError('');
+
+      // Use provided filters or fall back to state filters
+      const filtersToUse = customFilters !== undefined ? customFilters : filters;
+
+      // Build filters object, removing empty values and formatting dates
+      const appliedFilters: TransactionFilters = {};
+
+      // Convert datetime-local format (2025-11-13T19:27) to backend format (2025-11-13 19:27:36)
+      if (filtersToUse.start) {
+        appliedFilters.start = filtersToUse.start.replace('T', ' ') + ':00';
+      }
+      if (filtersToUse.end) {
+        appliedFilters.end = filtersToUse.end.replace('T', ' ') + ':00';
+      }
+
+      if (filtersToUse.transactionCategory) appliedFilters.transactionCategory = filtersToUse.transactionCategory;
+      if (filtersToUse.transactionType) appliedFilters.transactionType = filtersToUse.transactionType;
+      if (filtersToUse.transactionName) appliedFilters.transactionName = filtersToUse.transactionName;
+      if (filtersToUse.accountId) appliedFilters.accountId = filtersToUse.accountId;
+
       const [transactionsData, recurringData, accountsData] = await Promise.all([
-        transactionService.getTransactions(),
+        transactionService.getTransactions(Object.keys(appliedFilters).length > 0 ? appliedFilters : undefined),
         recurringTransactionService.getRecurringTransactions(),
         accountService.getAccounts(),
       ]);
@@ -114,7 +145,36 @@ function TransactionManagement() {
       isRecurring: false,
     }));
 
-    const recurringTx: UnifiedTransaction[] = recurringTransactions.map(rtx => ({
+    // Filter recurring transactions based on the same criteria
+    let filteredRecurringTx = recurringTransactions;
+
+    // Apply frontend filters to recurring transactions
+    if (filters.transactionName) {
+      filteredRecurringTx = filteredRecurringTx.filter(rtx =>
+        rtx.transactionName.toLowerCase().includes(filters.transactionName.toLowerCase())
+      );
+    }
+    if (filters.transactionCategory) {
+      filteredRecurringTx = filteredRecurringTx.filter(rtx =>
+        rtx.transactionCategory === filters.transactionCategory
+      );
+    }
+    if (filters.transactionType) {
+      filteredRecurringTx = filteredRecurringTx.filter(rtx =>
+        rtx.transactionType === filters.transactionType
+      );
+    }
+    if (filters.accountId) {
+      filteredRecurringTx = filteredRecurringTx.filter(rtx =>
+        rtx.accountId === filters.accountId
+      );
+    }
+
+    // If date filters are applied, exclude recurring transactions
+    // (since they don't have individual transaction dates)
+    const hasDateFilters = filters.start || filters.end;
+
+    const recurringTx: UnifiedTransaction[] = hasDateFilters ? [] : filteredRecurringTx.map(rtx => ({
       id: rtx.recurringTransactionId,
       name: rtx.transactionName,
       amount: rtx.amount,
@@ -269,7 +329,24 @@ function TransactionManagement() {
   const handleExportToCsv = async () => {
     try {
       setError('');
-      await transactionService.exportTransactionsToCsv();
+
+      // Build filters object, removing empty values and formatting dates
+      const appliedFilters: TransactionFilters = {};
+
+      // Convert datetime-local format (2025-11-13T19:27) to backend format (2025-11-13 19:27:36)
+      if (filters.start) {
+        appliedFilters.start = filters.start.replace('T', ' ') + ':00';
+      }
+      if (filters.end) {
+        appliedFilters.end = filters.end.replace('T', ' ') + ':00';
+      }
+
+      if (filters.transactionCategory) appliedFilters.transactionCategory = filters.transactionCategory;
+      if (filters.transactionType) appliedFilters.transactionType = filters.transactionType;
+      if (filters.transactionName) appliedFilters.transactionName = filters.transactionName;
+      if (filters.accountId) appliedFilters.accountId = filters.accountId;
+
+      await transactionService.exportTransactionsToCsv(Object.keys(appliedFilters).length > 0 ? appliedFilters : undefined);
       setSuccessMessage('Transactions exported successfully!');
       setTimeout(() => setSuccessMessage(''), 3000);
     } catch (err: any) {
@@ -346,6 +423,24 @@ function TransactionManagement() {
   const openDeleteModal = (transaction: UnifiedTransaction) => {
     setSelectedTransaction(transaction);
     setShowDeleteModal(true);
+  };
+
+  const handleApplyFilters = () => {
+    fetchData();
+  };
+
+  const handleClearFilters = () => {
+    const clearedFilters: TransactionFilters = {
+      start: '',
+      end: '',
+      transactionCategory: undefined,
+      transactionType: undefined,
+      transactionName: '',
+      accountId: '',
+    };
+    setFilters(clearedFilters);
+    // Pass cleared filters directly to avoid async state update issue
+    fetchData(clearedFilters);
   };
 
   const getTypeColor = (type: TransactionType) => {
@@ -493,6 +588,137 @@ function TransactionManagement() {
                 Ask AI
               </button>
             </div>
+          </div>
+        )}
+
+        {/* Advanced Filters Section */}
+        {!loading && accounts.length > 0 && (
+          <div className="bg-white rounded-lg shadow overflow-hidden mb-6">
+            <div className="px-6 py-4 bg-gray-50 border-b border-gray-200 flex justify-between items-center">
+              <h3 className="text-lg font-semibold text-gray-800">Filter Transactions</h3>
+              <button
+                onClick={() => setShowFilters(!showFilters)}
+                className="text-blue-600 hover:text-blue-700 text-sm font-medium flex items-center gap-1"
+              >
+                {showFilters ? (
+                  <>
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                    </svg>
+                    Hide Filters
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                    Show Filters
+                  </>
+                )}
+              </button>
+            </div>
+
+            {showFilters && (
+              <div className="px-6 py-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {/* Transaction Name Filter */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Transaction Name</label>
+                    <input
+                      type="text"
+                      value={filters.transactionName}
+                      onChange={(e) => setFilters({ ...filters, transactionName: e.target.value })}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="Search by name..."
+                    />
+                  </div>
+
+                  {/* Start Date Filter */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Start Date</label>
+                    <input
+                      type="datetime-local"
+                      value={filters.start}
+                      onChange={(e) => setFilters({ ...filters, start: e.target.value })}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+
+                  {/* End Date Filter */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">End Date</label>
+                    <input
+                      type="datetime-local"
+                      value={filters.end}
+                      onChange={(e) => setFilters({ ...filters, end: e.target.value })}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+
+                  {/* Transaction Type Filter */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Transaction Type</label>
+                    <select
+                      value={filters.transactionType || ''}
+                      onChange={(e) => setFilters({ ...filters, transactionType: e.target.value ? e.target.value as TransactionType : undefined })}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="">All Types</option>
+                      <option value={TransactionType.INCOME}>Income</option>
+                      <option value={TransactionType.EXPENSE}>Expense</option>
+                    </select>
+                  </div>
+
+                  {/* Transaction Category Filter */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Category</label>
+                    <select
+                      value={filters.transactionCategory || ''}
+                      onChange={(e) => setFilters({ ...filters, transactionCategory: e.target.value ? e.target.value as TransactionCategory : undefined })}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="">All Categories</option>
+                      {Object.values(TransactionCategory).map((cat) => (
+                        <option key={cat} value={cat}>{cat}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Account Filter */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Account</label>
+                    <select
+                      value={filters.accountId}
+                      onChange={(e) => setFilters({ ...filters, accountId: e.target.value })}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="">All Accounts</option>
+                      {accounts.map((account) => (
+                        <option key={account.accountId} value={account.accountId}>
+                          {account.accountName}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                {/* Filter Action Buttons */}
+                <div className="flex gap-3 mt-4">
+                  <button
+                    onClick={handleApplyFilters}
+                    className="px-6 py-2 bg-blue-600 text-white rounded font-medium hover:bg-blue-700 transition-colors"
+                  >
+                    Apply Filters
+                  </button>
+                  <button
+                    onClick={handleClearFilters}
+                    className="px-6 py-2 bg-gray-200 text-gray-700 rounded font-medium hover:bg-gray-300 transition-colors"
+                  >
+                    Clear Filters
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         )}
 

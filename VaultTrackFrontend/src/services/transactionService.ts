@@ -1,13 +1,25 @@
 import apiClient from '../api/client';
-import type { CreateTransactionData, Transaction } from '../types/transaction';
+import type { CreateTransactionData, Transaction, TransactionFilters } from '../types/transaction';
 
 class TransactionService {
   /**
-   * Get all transactions for the authenticated user
-   * @returns List of transactions
+   * Get all transactions for the authenticated user with optional filters
+   * @param filters - Optional filters (start, end, transactionCategory, transactionType, transactionName, accountId)
+   * @returns List of transactions matching the filters
    */
-  async getTransactions(): Promise<Transaction[]> {
-    const response = await apiClient.get<Transaction[]>('/transactions');
+  async getTransactions(filters?: TransactionFilters): Promise<Transaction[]> {
+    // Build query parameters
+    const params = new URLSearchParams();
+    if (filters?.start) params.append('start', filters.start);
+    if (filters?.end) params.append('end', filters.end);
+    if (filters?.transactionCategory) params.append('transactionCategory', filters.transactionCategory);
+    if (filters?.transactionType) params.append('transactionType', filters.transactionType);
+    if (filters?.transactionName) params.append('transactionName', filters.transactionName);
+    if (filters?.accountId) params.append('accountId', filters.accountId);
+
+    const response = await apiClient.get<Transaction[]>('/transactions', {
+      params,
+    });
     return response.data;
   }
 
@@ -62,25 +74,18 @@ class TransactionService {
 
   /**
    * Export transactions to CSV file
-   * @param filters - Optional filters for the export (transactionName, transactionType, transactionCategory, accountId, start, end)
+   * @param filters - Optional filters for the export (start, end, transactionCategory, transactionType, transactionName, accountId)
    * @returns void - Downloads the CSV file
    */
-  async exportTransactionsToCsv(filters?: {
-    transactionName?: string;
-    transactionType?: string;
-    transactionCategory?: string;
-    accountId?: string;
-    start?: string;
-    end?: string;
-  }): Promise<void> {
+  async exportTransactionsToCsv(filters?: TransactionFilters): Promise<void> {
     // Build query parameters
     const params = new URLSearchParams();
-    if (filters?.transactionName) params.append('transactionName', filters.transactionName);
-    if (filters?.transactionType) params.append('transactionType', filters.transactionType);
-    if (filters?.transactionCategory) params.append('transactionCategory', filters.transactionCategory);
-    if (filters?.accountId) params.append('accountId', filters.accountId);
     if (filters?.start) params.append('start', filters.start);
     if (filters?.end) params.append('end', filters.end);
+    if (filters?.transactionCategory) params.append('transactionCategory', filters.transactionCategory);
+    if (filters?.transactionType) params.append('transactionType', filters.transactionType);
+    if (filters?.transactionName) params.append('transactionName', filters.transactionName);
+    if (filters?.accountId) params.append('accountId', filters.accountId);
 
     const response = await apiClient.get('/transactions/export/csv', {
       params,

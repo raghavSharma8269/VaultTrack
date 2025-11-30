@@ -35,3 +35,12 @@ export interface Transaction {
   accountId: string;
   accountName: string;
 }
+
+export interface TransactionFilters {
+  start?: string;
+  end?: string;
+  transactionCategory?: TransactionCategory;
+  transactionType?: TransactionType;
+  transactionName?: string;
+  accountId?: string;
+}
