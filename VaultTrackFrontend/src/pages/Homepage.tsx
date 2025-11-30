@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import Header from '../components/Header';
+import { ExpensePieChart, IncomeExpenseBarChart, BalanceTrendLineChart } from '../components/analytics';
 import accountService from '../services/accountService';
 import authService from '../services/authService';
 import { AccountType } from '../types/account';
@@ -11,6 +12,7 @@ function Homepage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>('');
   const [filterType, setFilterType] = useState<AccountType | ''>('');
+  const [selectedAccount, setSelectedAccount] = useState<Account | null>(null);
 
   useEffect(() => {
     fetchAccounts();
@@ -167,7 +169,8 @@ function Homepage() {
             {accounts.map((account) => (
               <div
                 key={account.accountId}
-                className="bg-white rounded-lg shadow hover:shadow-md transition-shadow p-6"
+                className="bg-white rounded-lg shadow hover:shadow-md transition-shadow p-6 cursor-pointer"
+                onClick={() => setSelectedAccount(account)}
               >
                 <div className="flex justify-between items-start mb-4">
                   <h3 className="text-xl font-semibold text-gray-800">
@@ -191,8 +194,70 @@ function Homepage() {
                   <p>Created: {new Date(account.createdAt).toLocaleDateString()}</p>
                   <p>Updated: {new Date(account.updatedAt).toLocaleDateString()}</p>
                 </div>
+                <div className="mt-4 text-center">
+                  <span className="text-sm text-blue-600 font-medium">
+                    Click to view expense breakdown
+                  </span>
+                </div>
               </div>
             ))}
+          </div>
+        )}
+
+        {/* Account Details Modal with Charts */}
+        {selectedAccount && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-lg shadow-xl max-w-6xl w-full max-h-[90vh] overflow-y-auto">
+              <div className="p-6">
+                <div className="flex justify-between items-start mb-6">
+                  <div>
+                    <h2 className="text-2xl font-bold text-gray-800">
+                      {selectedAccount.accountName}
+                    </h2>
+                    <span
+                      className={`inline-block mt-2 px-3 py-1 rounded-full text-xs font-medium ${getAccountTypeColor(
+                        selectedAccount.accountType
+                      )}`}
+                    >
+                      {selectedAccount.accountType}
+                    </span>
+                  </div>
+                  <button
+                    onClick={() => setSelectedAccount(null)}
+                    className="text-gray-400 hover:text-gray-600 text-2xl font-bold"
+                  >
+                    &times;
+                  </button>
+                </div>
+
+                <div className="mb-6 p-4 bg-gray-50 rounded-lg">
+                  <p className="text-sm text-gray-600">Current Balance</p>
+                  <p className="text-3xl font-bold text-gray-900">
+                    ${selectedAccount.currentBalance.toFixed(2)}
+                  </p>
+                </div>
+
+                <div className="space-y-6">
+                  <BalanceTrendLineChart
+                    filters={{ accountId: selectedAccount.accountId }}
+                    title={`Balance Trend - ${selectedAccount.accountName}`}
+                    height={400}
+                  />
+
+                  <IncomeExpenseBarChart
+                    filters={{ accountId: selectedAccount.accountId }}
+                    title={`Monthly Income vs Expenses - ${selectedAccount.accountName}`}
+                    height={400}
+                  />
+
+                  <ExpensePieChart
+                    filters={{ accountId: selectedAccount.accountId }}
+                    title={`Expense Breakdown by Category - ${selectedAccount.accountName}`}
+                    height={400}
+                  />
+                </div>
+              </div>
+            </div>
           </div>
         )}
       </main>
