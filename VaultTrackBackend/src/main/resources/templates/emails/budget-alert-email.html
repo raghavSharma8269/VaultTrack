@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Budget Alert - VaultTrack</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background-color: #f5f5f5;
+            -webkit-font-smoothing: antialiased;
+        }
+        .email-container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #ffffff;
+        }
+        .header {
+            background-color: #2575FF;
+            padding: 40px 20px;
+            text-align: center;
+        }
+        .logo {
+            color: #ffffff;
+            font-size: 32px;
+            font-weight: bold;
+            margin: 0;
+            letter-spacing: -0.5px;
+        }
+        .content {
+            padding: 40px 30px;
+        }
+        .alert-icon {
+            text-align: center;
+            font-size: 48px;
+            margin-bottom: 20px;
+        }
+        .greeting {
+            font-size: 24px;
+            color: #333333;
+            margin: 0 0 20px 0;
+            font-weight: 600;
+        }
+        .message {
+            font-size: 16px;
+            color: #666666;
+            line-height: 1.6;
+            margin: 0 0 20px 0;
+        }
+        .budget-info-container {
+            background-color: #fff3cd;
+            border-left: 4px solid #ffc107;
+            border-radius: 8px;
+            padding: 25px;
+            margin: 30px 0;
+        }
+        .budget-row {
+            display: flex;
+            justify-content: space-between;
+            margin: 10px 0;
+            font-size: 16px;
+        }
+        .budget-label {
+            color: #666666;
+            font-weight: 500;
+        }
+        .budget-value {
+            color: #333333;
+            font-weight: 600;
+        }
+        .budget-value.warning {
+            color: #d32f2f;
+        }
+        .progress-bar-container {
+            width: 100%;
+            height: 30px;
+            background-color: #e9ecef;
+            border-radius: 15px;
+            overflow: hidden;
+            margin: 20px 0;
+            position: relative;
+        }
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #ffc107 0%, #ff9800 100%);
+            border-radius: 15px;
+            transition: width 0.3s ease;
+        }
+        .progress-bar.danger {
+            background: linear-gradient(90deg, #ff5252 0%, #d32f2f 100%);
+        }
+        .progress-percentage {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-weight: bold;
+            color: #333333;
+            font-size: 14px;
+        }
+        .account-name {
+            color: #2575FF;
+            font-weight: 600;
+        }
+        .cta-button {
+            display: inline-block;
+            background-color: #2575FF;
+            color: #ffffff;
+            text-decoration: none;
+            padding: 14px 40px;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: 600;
+            margin: 20px 0;
+            text-align: center;
+        }
+        .tips-section {
+            background-color: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 30px 0;
+        }
+        .tips-title {
+            font-size: 18px;
+            color: #333333;
+            font-weight: 600;
+            margin: 0 0 15px 0;
+        }
+        .tip-item {
+            font-size: 14px;
+            color: #666666;
+            margin: 8px 0;
+            padding-left: 20px;
+            position: relative;
+        }
+        .tip-item:before {
+            content: "•";
+            position: absolute;
+            left: 0;
+            color: #2575FF;
+            font-weight: bold;
+        }
+        .footer {
+            background-color: #f8f9fa;
+            padding: 30px;
+            text-align: center;
+            border-top: 1px solid #e9ecef;
+        }
+        .footer-text {
+            font-size: 14px;
+            color: #999999;
+            margin: 5px 0;
+            line-height: 1.6;
+        }
+        @media only screen and (max-width: 600px) {
+            .content {
+                padding: 30px 20px;
+            }
+            .budget-row {
+                flex-direction: column;
+            }
+            .budget-value {
+                margin-top: 5px;
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="email-container">
+    <!-- Header -->
+    <div class="header">
+        <h1 class="logo">VaultTrack</h1>
+    </div>
+
+    <!-- Content -->
+    <div class="content">
+        <div class="alert-icon">⚠️</div>
+
+        <h2 class="greeting">Budget Alert!</h2>
+
+        <p class="message">
+            Hi <span th:text="${firstName}">User</span>, you've reached
+            <strong th:text="${alertThreshold} + '%'">80%</strong> of your budget for
+            <span class="account-name" th:text="${accountName}">Checking Account</span>.
+        </p>
+
+        <!-- Budget Information -->
+        <div class="budget-info-container">
+            <div class="budget-row">
+                <span class="budget-label">Budget Amount:</span>
+                <span class="budget-value" th:text="'$' + ${budgetAmount}">$1,000.00</span>
+            </div>
+            <div class="budget-row">
+                <span class="budget-label">Current Spent:</span>
+                <span class="budget-value warning" th:text="'$' + ${currentSpent}">$800.00</span>
+            </div>
+            <div class="budget-row">
+                <span class="budget-label">Remaining:</span>
+                <span class="budget-value" th:text="'$' + ${remainingAmount}">$200.00</span>
+            </div>
+            <div class="budget-row">
+                <span class="budget-label">Period:</span>
+                <span class="budget-value" th:text="${periodType}">Monthly</span>
+            </div>
+
+            <!-- Progress Bar -->
+            <div class="progress-bar-container">
+                <div class="progress-bar" th:classappend="${percentageUsed >= 100} ? 'danger' : ''"
+                     th:style="'width: ' + ${percentageUsed} + '%'"></div>
+                <span class="progress-percentage" th:text="${percentageUsed} + '%'">80%</span>
+            </div>
+        </div>
+
+        <p class="message">
+            You have <strong th:text="'$' + ${remainingAmount}">$200.00</strong> remaining for this
+            <span th:text="${periodType}">monthly</span> budget period.
+        </p>
+
+        <p class="message">
+            Stay in control of your finances with VaultTrack!
+        </p>
+
+        <p class="message" style="margin-top: 30px;">
+            Best regards,<br>
+            <strong>The VaultTrack Team</strong>
+        </p>
+    </div>
+
+    <!-- Footer -->
+    <div class="footer">
+        <p class="footer-text">
+            <strong>VaultTrack</strong> - Your Personal Finance Companion
+        </p>
+        <p class="footer-text">
+            © <span th:text="${#dates.year(#dates.createNow())}">2024</span> VaultTrack. All rights reserved.
+        </p>
+        <p class="footer-text" style="margin-top: 20px; font-size: 12px;">
+            You're receiving this email because you have budget alerts enabled for your VaultTrack account.
+        </p>
+    </div>
+</div>
+</body>
+</html>

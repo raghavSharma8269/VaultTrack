@@ -35,23 +35,34 @@ public class CheckBudgetAfterTransactionService {
         BigDecimal thresholdDecimal = BigDecimal.valueOf(budget.getAlertThreshold()).divide(BigDecimal.valueOf(100));
         BigDecimal thresholdAmount = budget.getBudgetAmount().multiply(thresholdDecimal);
 
-
-
-        if (budget.getIsActive()){
-            if (budget.getCurrentSpent().compareTo(budget.getBudgetAmount()) >= 0){
+        if (budget.getIsActive()) {
+            // Check if budget limit is exceeded
+            if (budget.getCurrentSpent().compareTo(budget.getBudgetAmount()) >= 0) {
                 log.info("Budget limit exceeded for budget id: {}", budget.getBudgetId());
-                emailService.sendSimpleMessage(
+
+                emailService.sendBudgetExceededEmail(
                         budget.getAccount().getUser().getEmail(),
-                        "Budget Limit Exceeded",
-                        "You have exceeded your budget limit for your account named: " + budget.getAccount().getAccountName()
-                );            }
-            else if (budget.getCurrentSpent().compareTo(thresholdAmount) >= 0){
+                        budget.getAccount().getUser().getFirstName(),
+                        budget.getAccount().getAccountName(),
+                        budget.getBudgetAmount(),
+                        budget.getCurrentSpent(),
+                        budget.getPeriodType().toString()
+                );
+            }
+            // Check if alert threshold is reached
+            else if (budget.getCurrentSpent().compareTo(thresholdAmount) >= 0) {
                 log.info("Budget alert threshold reached for budget id: {}", budget.getBudgetId());
-                emailService.sendSimpleMessage(
+
+                emailService.sendBudgetAlertEmail(
                         budget.getAccount().getUser().getEmail(),
-                        "Budget Alert",
-                        "You have reached your budget alert threshold of " + budget.getAlertThreshold() + "% for your account named: " + budget.getAccount().getAccountName()
-                );            }
+                        budget.getAccount().getUser().getFirstName(),
+                        budget.getAccount().getAccountName(),
+                        budget.getBudgetAmount(),
+                        budget.getCurrentSpent(),
+                        budget.getAlertThreshold(),
+                        budget.getPeriodType().toString()
+                );
+            }
         }
     }
 }

@@ -41,6 +41,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/auth/**").permitAll()
                         .requestMatchers("/error").permitAll()
+                        .requestMatchers("/api/test/email/**").permitAll()
                         .anyRequest().authenticated()
                 )
                 .sessionManagement(session -> session
