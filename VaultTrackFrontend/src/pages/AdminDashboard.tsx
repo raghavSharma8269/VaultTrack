@@ -1,9 +1,9 @@
-// src/pages/AdminDashboard.tsx
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import apiClient from '../api/client';
 import authService from '../services/authService';
 import Header from '../components/Header';
+import { AxiosError } from 'axios';
 
 interface User {
     userId: string;
@@ -14,6 +14,10 @@ interface User {
     role: 'USER' | 'ADMIN';
     createdAt: string;
     updatedAt: string;
+}
+
+interface ErrorResponse {
+    message?: string;
 }
 
 function AdminDashboard() {
@@ -49,8 +53,9 @@ function AdminDashboard() {
 
             const response = await apiClient.get<User[]>(endpoint);
             setUsers(response.data);
-        } catch (err: any) {
-            setError(err.response?.data?.message || 'Failed to fetch users');
+        } catch (err) {
+            const axiosError = err as AxiosError<ErrorResponse>;
+            setError(axiosError.response?.data?.message || 'Failed to fetch users');
             console.error('Error fetching users:', err);
         } finally {
             setLoading(false);
