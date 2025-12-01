@@ -20,6 +20,8 @@ function AdminDashboard() {
     const [users, setUsers] = useState<User[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [emailSearch, setEmailSearch] = useState('');
+    const [roleFilter, setRoleFilter] = useState<string>('');
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -32,17 +34,42 @@ function AdminDashboard() {
         fetchUsers();
     }, [navigate]);
 
-    const fetchUsers = async () => {
+    const fetchUsers = async (email: string = '', role: string = '') => {
         try {
             setLoading(true);
             setError(null);
-            const response = await apiClient.get<User[]>('/admin');
+
+            // Build query params
+            const params = new URLSearchParams();
+            if (email) params.append('email', email);
+            if (role) params.append('role', role);
+
+            const queryString = params.toString();
+            const endpoint = queryString ? `/admin?${queryString}` : '/admin';
+
+            const response = await apiClient.get<User[]>(endpoint);
             setUsers(response.data);
         } catch (err: any) {
             setError(err.response?.data?.message || 'Failed to fetch users');
             console.error('Error fetching users:', err);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleSearch = () => {
+        fetchUsers(emailSearch, roleFilter);
+    };
+
+    const handleReset = () => {
+        setEmailSearch('');
+        setRoleFilter('');
+        fetchUsers('', '');
+    };
+
+    const handleKeyPress = (e: React.KeyboardEvent) => {
+        if (e.key === 'Enter') {
+            handleSearch();
         }
     };
 
@@ -63,7 +90,7 @@ function AdminDashboard() {
             : 'bg-blue-100 text-blue-800';
     };
 
-    if (loading) {
+    if (loading && users.length === 0) {
         return (
             <>
                 <Header />
@@ -93,6 +120,63 @@ function AdminDashboard() {
                         </div>
                     )}
 
+                    {/* Search and Filter Section */}
+                    <div className="bg-white rounded-lg shadow p-6 mb-6">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            {/* Email Search */}
+                            <div>
+                                <label htmlFor="email-search" className="block text-sm font-medium text-gray-700 mb-2">
+                                    Search by Email
+                                </label>
+                                <input
+                                    id="email-search"
+                                    type="text"
+                                    placeholder="Enter email..."
+                                    value={emailSearch}
+                                    onChange={(e) => setEmailSearch(e.target.value)}
+                                    onKeyPress={handleKeyPress}
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                />
+                            </div>
+
+                            {/* Role Filter */}
+                            <div>
+                                <label htmlFor="role-filter" className="block text-sm font-medium text-gray-700 mb-2">
+                                    Filter by Role
+                                </label>
+                                <select
+                                    id="role-filter"
+                                    value={roleFilter}
+                                    onChange={(e) => setRoleFilter(e.target.value)}
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                >
+                                    <option value="">All Roles</option>
+                                    <option value="USER">USER</option>
+                                    <option value="ADMIN">ADMIN</option>
+                                </select>
+                            </div>
+
+                            {/* Action Buttons */}
+                            <div className="flex items-end gap-2">
+                                <button
+                                    onClick={handleSearch}
+                                    disabled={loading}
+                                    className="flex-1 px-6 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
+                                >
+                                    {loading ? 'Searching...' : 'Search'}
+                                </button>
+                                <button
+                                    onClick={handleReset}
+                                    disabled={loading}
+                                    className="flex-1 px-6 py-2 bg-gray-600 text-white rounded-lg font-medium hover:bg-gray-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
+                                >
+                                    Reset
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Users Table */}
                     <div className="bg-white rounded-lg shadow overflow-hidden">
                         <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
                             <h2 className="text-lg font-semibold text-gray-900">
