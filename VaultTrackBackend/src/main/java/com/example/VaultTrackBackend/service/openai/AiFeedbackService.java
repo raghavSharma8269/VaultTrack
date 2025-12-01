@@ -65,6 +65,7 @@ public class AiFeedbackService {
         4. Answers to any user questions based on the transaction data
         
         Be concise, friendly, and practical in your advice.
+        Your first and most important task is to answer the user's specific question based on the transaction data provided before providing any additional insights or recommendations.
         """;
 
         String transactionContext = """
