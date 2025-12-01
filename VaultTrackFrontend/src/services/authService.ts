@@ -32,6 +32,14 @@ class AuthService {
 
     if (response.data.token) {
       localStorage.setItem('authToken', response.data.token);
+      // Store user data
+      localStorage.setItem('user', JSON.stringify({
+        email: response.data.email,
+        firstName: response.data.firstName,
+        lastName: response.data.lastName,
+        userId: response.data.userId,
+        role: response.data.role
+      }));
     }
 
     return response.data;
@@ -47,6 +55,14 @@ class AuthService {
 
     if (response.data.token) {
       localStorage.setItem('authToken', response.data.token);
+      // Store user data
+      localStorage.setItem('user', JSON.stringify({
+        email: response.data.email,
+        firstName: response.data.firstName,
+        lastName: response.data.lastName,
+        userId: response.data.userId,
+        role: response.data.role
+      }));
     }
 
     return response.data;
@@ -57,6 +73,7 @@ class AuthService {
    */
   logout(): void {
     localStorage.removeItem('authToken');
+    localStorage.removeItem('user');
   }
 
   /**
@@ -64,6 +81,32 @@ class AuthService {
    */
   isAuthenticated(): boolean {
     return !!localStorage.getItem('authToken');
+  }
+
+  /**
+   * Get the current user data
+   * @returns User object or null if not authenticated
+   */
+  getUser(): { email: string; firstName: string; lastName: string; userId: string; role: string } | null {
+    const userStr = localStorage.getItem('user');
+    return userStr ? JSON.parse(userStr) : null;
+  }
+
+  /**
+   * Get the current user's role
+   * @returns User role string or null if not authenticated
+   */
+  getUserRole(): string | null {
+    const user = this.getUser();
+    return user?.role || null;
+  }
+
+  /**
+   * Check if the current user is an admin
+   * @returns true if user has ADMIN role, false otherwise
+   */
+  isAdmin(): boolean {
+    return this.getUserRole() === 'ADMIN';
   }
 }
 
