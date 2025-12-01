@@ -1,6 +1,7 @@
 package com.example.VaultTrackBackend.service.account;
 
 import com.example.VaultTrackBackend.model.entity.Account;
+import com.example.VaultTrackBackend.model.entity.User;
 import com.example.VaultTrackBackend.repository.AccountRepository;
 import com.example.VaultTrackBackend.service.auth.GetCurrentUserService;
 import org.springframework.http.ResponseEntity;
@@ -28,7 +29,7 @@ public class DeleteAccountService {
             return ResponseEntity.status(404).body("Account not found");
         }
 
-        var currentUser = getCurrentUserService.execute();
+        User currentUser = getCurrentUserService.execute();
         if (!account.getUser().getUserId().equals(currentUser.getUserId())) {
             return ResponseEntity.status(403).body("You do not have permission to delete this account");
         }
