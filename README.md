@@ -133,6 +133,7 @@ VaultTrackFrontend/
 - Go to `http://localhost:5173`
 - Click "Sign Up" to create account
 - Or "Login" if you have an account
+  ![Register Page](images/register.png)
 
 ### 2. Manage Accounts
 - **Create**: Add checking, savings, credit card, investment, or loan accounts
@@ -140,35 +141,46 @@ VaultTrackFrontend/
 - **Search**: Filter by name or type
 - **Edit**: Update account details
 - **Delete**: Remove account (deletes all transactions)
+    ![Account Management](images/accounts.png)
 
 ### 3. Manage Transactions
 - **Create**: Add income, expense, or transfer transactions
 - **Categories**: Food, Transportation, Shopping, Entertainment, Bills, etc.
 - **Filter**: By type, category, account, date, or description
 - **Export/Import**: Download or upload CSV files
+![Transaction Management](images/transactions.png)
+
 
 ### 4. Recurring Transactions
 - **Create**: Set up automatic recurring payments/income
 - **Frequency**: Daily, Weekly, Monthly, or Yearly
 - **Auto-process**: System automatically creates transactions when due
+![Recurring Transactions Management](images/recurring.png)
+
 
 ### 5. Budgets
 - **Create**: Set spending limits per category and time period
 - **Track**: See progress with visual bars
 - **Alerts**: Get email when reaching 80% or exceeding budget
 - **Auto-reset**: Budgets reset automatically each period
+![Budget Management](images/setbudget.png)
+
 
 ### 6. Analytics
 - **Pie Chart**: Expense breakdown by category
 - **Bar Chart**: Monthly income vs expense comparison
 - **Line Chart**: Account balance trends over time
 - **AI Insights**: Get personalized financial advice
+![Line Chart](images/linechart.png)
+![Bar Chart](images/barchart.png)
+![Pie Chart](images/piechart.png)
 
 ### 7. Admin Features (ADMIN role only)
 - View all users
 - Search by email
 - Filter by role (USER/ADMIN)
 - Update user roles
+![Admin Dashboard](images/admindash.png)
 
 ## 🔑 Default Accounts
 
