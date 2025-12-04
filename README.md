@@ -1,4 +1,4 @@
-# VaultTrack 
+# VaultTrack
 
 A full-stack financial management application for tracking accounts, transactions, budgets, and recurring payments with AI-powered insights.
 
@@ -135,52 +135,63 @@ VaultTrackFrontend/
 - Or "Login" if you have an account
   ![Register Page](images/register.png)
 
-### 2. Manage Accounts
+### 2. Homepage - Account Overview
+- **Total Balance**: View your combined balance across all accounts
+- **Account Cards**: See individual account balances and types (Checking, Savings, Credit Card, etc.)
+- **Quick Actions**:
+    - Click "Manage Transactions" to add/edit transactions
+    - Click "Manage Accounts" to create/edit accounts
+    - Click "Admin Dashboard" (if admin) to manage users
+- **Filter Accounts**: Use the dropdown to filter by account type
+- **Expense Breakdown**: Click "Click to view expense breakdown" on any account card to see detailed category breakdown
+  ![Homepage](images/home.png)
+
+### 3. Manage Accounts
 - **Create**: Add checking, savings, credit card, investment, or loan accounts
 - **View**: See all accounts with balances
 - **Search**: Filter by name or type
 - **Edit**: Update account details
 - **Delete**: Remove account (deletes all transactions)
-    ![Account Management](images/accounts.png)
+  ![Account Management](images/accounts.png)
 
-### 3. Manage Transactions
+### 4. Manage Transactions
 - **Create**: Add income, expense, or transfer transactions
 - **Categories**: Food, Transportation, Shopping, Entertainment, Bills, etc.
 - **Filter**: By type, category, account, date, or description
 - **Export/Import**: Download or upload CSV files
-![Transaction Management](images/transactions.png)
+  ![Transaction Management](images/transactions.png)
 
 
-### 4. Recurring Transactions
+### 5. Recurring Transactions
 - **Create**: Set up automatic recurring payments/income
 - **Frequency**: Daily, Weekly, Monthly, or Yearly
 - **Auto-process**: System automatically creates transactions when due
-![Recurring Transactions Management](images/recurring.png)
+  ![Recurring Transactions Management](images/recurring.png)
 
 
-### 5. Budgets
+### 6. Budgets
 - **Create**: Set spending limits per category and time period
 - **Track**: See progress with visual bars
 - **Alerts**: Get email when reaching 80% or exceeding budget
 - **Auto-reset**: Budgets reset automatically each period
-![Budget Management](images/setbudget.png)
+  ![Budget Management](images/setbudget.png)
 
 
-### 6. Analytics
+### 7. Analytics
 - **Pie Chart**: Expense breakdown by category
 - **Bar Chart**: Monthly income vs expense comparison
 - **Line Chart**: Account balance trends over time
 - **AI Insights**: Get personalized financial advice
-![Line Chart](images/linechart.png)
-![Bar Chart](images/barchart.png)
-![Pie Chart](images/piechart.png)
+  ![Line Chart](images/linechart.png)
+  ![Bar Chart](images/barchart.png)
+  ![Pie Chart](images/piechart.png)
 
-### 7. Admin Features (ADMIN role only)
+### 8. Admin Features (ADMIN role only)
 - View all users
 - Search by email
 - Filter by role (USER/ADMIN)
 - Update user roles
-![Admin Dashboard](images/admindash.png)
+  ![Admin Dashboard](images/admindash.png)
 
 ## 🔑 Default Accounts
 
